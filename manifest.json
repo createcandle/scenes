@@ -19,7 +19,7 @@
       "strict_min_version": "1.1.0"
     }
   },
-  "homepage_url": "https://github.com/createcandle/example-addon",
+  "homepage_url": "https://github.com/createcandle/scenes",
   "id": "scenes",
   "license": "None",
   "manifest_version": 1,
@@ -45,7 +45,7 @@
     }
   },
   "short_name": "scenes",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "web_accessible_resources": [
     "css/*.css",
     "images/*.svg",
