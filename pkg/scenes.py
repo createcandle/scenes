@@ -91,7 +91,7 @@ class ScenesAdapter(Adapter):
         self.api_server = 'http://127.0.0.1:8080' # Where can the Gateway API be found? this will be replaced with https://127.0.0.1:4443 later on, if a test call to the api fails.
         
 
-        self.run_last_scene_at_addon_startup = True
+        self.run_last_scene_at_addon_startup = False
         
 
 

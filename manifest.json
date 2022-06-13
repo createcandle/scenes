@@ -37,7 +37,7 @@
 		},
         "Debugging": {
           "type": "boolean",
-          "description": "Advanced. Starting this sentence with 'Advanced. ' will cause it be be shown under the advanced settings in the Candle store."
+          "description": "Advanced. Causes extra information about the addon's functioning to be written to the internal log. Useful if there is an issue with the addon."
         }
       },
       "required": ["A string setting"],
@@ -45,7 +45,7 @@
     }
   },
   "short_name": "scenes",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "web_accessible_resources": [
     "css/*.css",
     "images/*.svg",
