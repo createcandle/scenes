@@ -76,10 +76,17 @@
             
             
             
-            // ADD button press
+            // SAVE button press
             document.getElementById('extension-scenes-edit-save-button').addEventListener('click', (event) => {
             	console.log("edit save button clicked. Event: ", event);
                 this.save_scene();
+            });
+            
+            
+            // TEST button press
+            document.getElementById('extension-scenes-edit-test-button').addEventListener('click', (event) => {
+            	console.log("edit test button clicked. Event: ", event);
+                this.save_scene(true);
             });
             
             
@@ -294,7 +301,7 @@
                             }
 
 						}).catch((e) => {
-							console.log("scenes: error in delete items handler: ", e);
+							console.log("scenes: error in play handler: ", e);
 						});
                     
                     });
@@ -311,7 +318,7 @@
     						// Inform backend
     						window.API.postJson(
     							`/extensions/${this.id}/api/ajax`,
-    							{'action':'delete','name': event.target.dataset.name}
+    							{'action':'delete','scene_name': event.target.dataset.name}
     						).then((body) => { 
     							console.log("delete item response: ", body);
                                 if(body.state == true){
@@ -396,16 +403,16 @@
         				
 			
         				var thing_id = things[key]['href'].substr(things[key]['href'].lastIndexOf('/') + 1);
-        				try{
-        					if (thing_id.startsWith('highlights-' || thing_id == 'scenes-thing') ){
-        						// Skip items that are already highlight clones themselves.
-        						console.log(thing_id + " starts with highlight-, or is scenes-thing, so skipping.");
-        						continue;
-        					}
-					
-        				}
-        				catch(e){
-                            console.log("error in creating list of things: " + e);
+                        console.log("thing_id: ", thing_id);
+                        
+                        if(thing_id == 'scenes-thing'){
+                            console.log("FOUND IT scenes-thing");
+                            continue;
+                        }
+                        
+                        if (thing_id.startsWith('highlights-') ){
+    						console.log(thing_id + " starts with highlight-, so skipping.");
+    						continue;
                         }
                         
                         console.log("thing_title and ID: ", thing_title, thing_id);
@@ -648,7 +655,11 @@
     
     
     
-        save_scene(){
+        save_scene(test){
+            
+            if(typeof test == 'undefined'){
+                test = false;
+            }
             
             const scene_name = document.getElementById('extension-scenes-edit-name').value;
             if(scene_name == ""){
@@ -723,19 +734,27 @@
             }
             
             
+            var action = 'save_scene';
+            if(test){
+                action = 'test_scene';
+            }
+            
+            
             // If we end up here, then a name and number were present in the input fields. We can now ask the backend to save the new item.
 			window.API.postJson(
 				`/extensions/${this.id}/api/ajax`,
-				{'action':'save_scene', 'scene_name':scene_name, 'scene_settings':scene_settings}
+				{'action':action, 'scene_name':scene_name, 'scene_settings':scene_settings}
                 
 			).then((body) => {
                 console.log("save scene response: ", body);
                 if(body.state == true){
                     console.log("saving scene went ok");
-                    document.getElementById('extension-scenes-content-container').classList.remove('extension-scenes-showing-second-page');
-                    document.getElementById('extension-scenes-view').style.zIndex = 'auto';
-                    this.scenes = body['scenes'];
-                    this.regenerate_items(body['scenes']);
+                    if(action == 'save_scene'){
+                        document.getElementById('extension-scenes-content-container').classList.remove('extension-scenes-showing-second-page');
+                        document.getElementById('extension-scenes-view').style.zIndex = 'auto';
+                        this.scenes = body['scenes'];
+                        this.regenerate_items(body['scenes']);
+                    }
                 }
                 else{
                     console.log("saving new item failed!");

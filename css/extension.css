@@ -156,10 +156,19 @@ extension-scenes-
     width:100%;
 }
 
+.extension-scenes-item-setter{
+    width:100%;
+}
+
 .extension-scenes-item-name{
     font-size:2rem;
     cursor:pointer;
     opacity:.9;
+    width: 100%;
+    display: inline-block;
+    box-sizing: border-box;
+    padding: 2rem;
+    margin: 0;
 }
 .extension-scenes-item-name:hover{
     opacity:1;
@@ -265,7 +274,7 @@ extension-scenes-
 
 #extension-scenes-edit-name{
     width: 100%;
-    font-size: 3rem;
+    font-size: 2rem;
     height: auto;
     padding: 1rem;
     max-width: calc(100% - 2rem);
@@ -331,7 +340,7 @@ extension-scenes-
 }
 
 #extension-scenes-edit-thing-settings .extension-scenes-edit-item-property-value{
-    display:inline-block;
+    display:block;
     margin-left:1rem;
     font-size:1.8rem;
     max-width: calc(100% - 5rem);
@@ -362,6 +371,11 @@ extension-scenes-
     margin-right: 2rem;
     font-size: 1.6rem;
     background-color: rgba(0,0,0,.2);
+}
+
+#extension-scenes-edit-buttons{
+    display:flex;
+    justify-content:space-between;
 }
 
 

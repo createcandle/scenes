@@ -271,6 +271,7 @@ class ScenesAdapter(Adapter):
                 # A cool feature: you can create popups in the interface this way:
                 self.send_pairing_prompt("Scene: " + str(value))
         
+                self.actually_set_scene(self.persistent_data['scenes'][value])
                 
         
                 try:
@@ -279,45 +280,54 @@ class ScenesAdapter(Adapter):
                     print("error setting dropdown value on thing: " + str(ex))
         
                 
-                for thing_id in self.persistent_data['scenes'][value]:
-                    #print("set_scene: thing_id: " + str(thing_id))
-                    
-                    for property_id in self.persistent_data['scenes'][value][thing_id]:
-                        property_value = self.persistent_data['scenes'][value][thing_id][property_id]
-                    
-                        api_path = '/things/' + str(thing_id) + '/properties/' + str(property_id)
-                        
-                        
-                        if self.DEBUG:
-                            print("\nthing_id to set: " + str(thing_id))
-                            print("property_id to set: " + str(property_id))
-                            print("property_value to set: " + str(property_value))
-                        
-                        if property_value == 'true':
-                            property_value = True
-                        elif property_value == 'false':
-                            property_value = False
-                        elif property_value == 'null' or property_value == '':
-                            property_value = None
-                        elif property_value.isnumeric():
-                            property_value = get_int_or_float(property_value)
-                    
-                    
-                        json_dict = {property_id:property_value}
-                        
-                        if self.DEBUG:
-                            print("json_dict: " + str(json_dict) + " will be sent to API endpoint: " + str(api_path))
-                    
-                        try:
-                            api_result = self.api_put(api_path, json_dict)
-                        except Exception as ex:
-                            print("error doing api_put: " + str(ex))
-                         
             else:
                 print("Error, that scene does not exist")
         except Exception as ex:
             if self.DEBUG:
                 print("error in set_scene: " + str(ex))
+
+    def actually_set_scene(self,dictionary):
+        if self.DEBUG:
+            print("in actually_set_scene. Dictionary: " + str(dictionary))
+        try:
+            for thing_id in dictionary:
+                #print("set_scene: thing_id: " + str(thing_id))
+            
+                for property_id in dictionary[thing_id]:
+                    property_value = dictionary[thing_id][property_id]
+            
+                    api_path = '/things/' + str(thing_id) + '/properties/' + str(property_id)
+                    
+                    if self.DEBUG:
+                        print("\nthing_id to set: " + str(thing_id))
+                        print("property_id to set: " + str(property_id))
+                        print("property_value to set: " + str(property_value))
+                
+                    if property_value == 'true':
+                        property_value = True
+                    elif property_value == 'false':
+                        property_value = False
+                    elif property_value == 'null' or property_value == '':
+                        property_value = None
+                    elif property_value.isnumeric():
+                        property_value = get_int_or_float(property_value)
+            
+            
+                    json_dict = {property_id:property_value}
+                
+                    if self.DEBUG:
+                        print("json_dict: " + str(json_dict) + " will be sent to API endpoint: " + str(api_path))
+            
+                    try:
+                        api_result = self.api_put(api_path, json_dict)
+                    except Exception as ex:
+                        print("error doing api_put: " + str(ex))
+                        
+        except Exception as ex:
+            if self.DEBUG:
+                print("error in actually_set_scene: " + str(ex))
+        
+        
 
 
 
@@ -541,7 +551,7 @@ class ScenesDevice(Device):
                             },
                             self.adapter.persistent_data['current_scene'])
 
-            self.adapter.handle_device_added(self);
+            self.adapter.handle_device_added(self)
             self.notify_property_changed(self.properties["scenes"])
         else:
             print("no scenes exist yet")
@@ -713,14 +723,14 @@ class ScenesAPIHandler(APIHandler):
                         state = False
                         
                         try:
-                            scene_name = str(request.body['scene_name']);
-                            scene_settings = request.body['scene_settings'];
+                            scene_name = str(request.body['scene_name'])
+                            scene_settings = request.body['scene_settings']
                             
                             if self.DEBUG:
                                 print("incoming scene_name: " + str(scene_name))
                                 print("incoming scene_settings: " + str(scene_settings))
                             
-                            self.adapter.persistent_data['scenes'][scene_name] = scene_settings;
+                            self.adapter.persistent_data['scenes'][scene_name] = scene_settings
                             #print("self.adapter.persistent_data['scenes']: " + str(self.adapter.persistent_data['scenes']))
                             
                             self.adapter.save_persistent_data()
@@ -731,7 +741,7 @@ class ScenesAPIHandler(APIHandler):
                             
                         except Exception as ex:
                             if self.DEBUG:
-                                print("Error adding: " + str(ex))
+                                print("Error saving scene: " + str(ex))
                         
                         
                         return APIResponse(
@@ -743,6 +753,36 @@ class ScenesAPIHandler(APIHandler):
                         )
                     
                     
+                    
+                    # TEST SCENE
+                    elif action == 'test_scene':
+                        if self.DEBUG:
+                            print("API: in test_scene")
+                        state = False
+                    
+                        try:
+                            scene_settings = request.body['scene_settings']
+                            if self.DEBUG:
+                                print("incoming scene_settings: " + str(scene_settings))
+                        
+                            self.adapter.actually_set_scene(scene_settings)
+                        
+                            state = True
+                        
+                        except Exception as ex:
+                            if self.DEBUG:
+                                print("Error testing: " + str(ex))
+                    
+                        return APIResponse(
+                          status=200,
+                          content_type='application/json',
+                          content=json.dumps({'state' : state,
+                                              'scenes': self.adapter.persistent_data['scenes'],
+                                              }),
+                        )
+                    
+                    
+                    
                     # DELETE
                     # In this example we call out to a separate delete method instead of handling the action directly
                     elif action == 'delete':
@@ -752,8 +792,8 @@ class ScenesAPIHandler(APIHandler):
                         state = False
                         
                         try:
-                            scene_name = str(request.body['scene_name']);
-                            del self.adapter.scenes[scene_name]
+                            scene_name = str(request.body['scene_name'])
+                            del self.adapter.persistent_data['scenes'][scene_name]
                             self.adapter.save_persistent_data()
                             
                             self.adapter.devices['scenes-thing'].update_scene_property()
