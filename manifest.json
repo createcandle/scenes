@@ -40,12 +40,12 @@
           "description": "Advanced. Causes extra information about the addon's functioning to be written to the internal log. Useful if there is an issue with the addon."
         }
       },
-      "required": ["A string setting"],
+      "required": [],
       "type": "object"
     }
   },
   "short_name": "scenes",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "web_accessible_resources": [
     "css/*.css",
     "images/*.svg",
