@@ -159,20 +159,26 @@ extension-scenes-
 
 .extension-scenes-item-setter{
     width:100%;
+    cursor:pointer;
+    opacity:.9;
+}
+.extension-scenes-item-setter:hover{
+    opacity:1;
 }
 
 .extension-scenes-item-name{
     font-size:2rem;
-    cursor:pointer;
     opacity:.9;
     width: 100%;
     display: inline-block;
     box-sizing: border-box;
-    padding: 2rem;
+    padding: 0rem 2rem 0.5rem 0;
     margin: 0;
+    margin-left:2rem;
 }
-.extension-scenes-item-name:hover{
-    opacity:1;
+
+.extension-scenes-item-description{
+    margin-left:2rem;
 }
 
 

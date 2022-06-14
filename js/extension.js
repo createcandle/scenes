@@ -9,20 +9,27 @@
             this.scenes = {};
             
             
-			console.log("Adding scenes addon to main menu");
+			//console.log("Adding scenes addon to main menu");
 			this.addMenuEntry('Scenes');
             
-            const jwt = localStorage.getItem('jwt');
+            
+            // Send the token to the backout. Timeout gives the backend some time to get started.
+            setTimeout(() => {
+                const jwt = localStorage.getItem('jwt');
 
-            window.API.postJson(
-              `/extensions/${this.id}/api/ajax`,
-    			{'action':'save_token','token':jwt}
+                window.API.postJson(
+                  `/extensions/${this.id}/api/ajax`,
+        			{'action':'save_token','jwt':jwt}
 
-            ).then((body) => {
+                ).then((body) => {
 
-            }).catch((e) => {
-      			console.log("Error saving token: ", e);
-            });
+                }).catch((e) => {
+          			console.log("Error saving token: ", e);
+                });
+            }, 5000);
+            
+            
+            
             
             
             // Load the html
@@ -41,7 +48,7 @@
             
             
             // This is not needed, but might be interesting to see. It will show you the API that the controller has available. For example, you can get a list of all the things this way.
-            console.log("window API: ", window.API);
+            //console.log("window API: ", window.API);
             
 	    }
 
@@ -55,7 +62,7 @@
         //
         // This is called then the user clicks on the addon in the main menu, or when the page loads and is already on this addon's location.
 	    show() {
-			console.log("scenes show called");
+			//console.log("scenes show called");
 			//console.log("this.content:");
 			//console.log(this.content);
             
@@ -63,7 +70,7 @@
 			const main_view = document.getElementById('extension-scenes-view');
 			
 			if(this.content == ''){
-                console.log("content has not loaded yet");
+                //console.log("content has not loaded yet");
 				return;
 			}
 			else{
@@ -78,14 +85,14 @@
             
             // SAVE button press
             document.getElementById('extension-scenes-edit-save-button').addEventListener('click', (event) => {
-            	console.log("edit save button clicked. Event: ", event);
+            	//console.log("scenes: edit save button clicked. Event: ", event);
                 this.save_scene();
             });
             
             
             // TEST button press
             document.getElementById('extension-scenes-edit-test-button').addEventListener('click', (event) => {
-            	console.log("edit test button clicked. Event: ", event);
+            	//console.log("scenes: edit test button clicked. Event: ", event);
                 this.save_scene(true);
             });
             
@@ -104,7 +111,7 @@
             
             // Button to show the second page
             document.getElementById('extension-scenes-show-second-page-button').addEventListener('click', (event) => {
-                console.log("clicked on + button");
+                //console.log("scenes: clicked on + button");
                 document.getElementById('extension-scenes-content-container').classList.add('extension-scenes-showing-second-page');
                 
                 // iPhones need this fix to make the back button lay on top of the main menu button
@@ -115,7 +122,7 @@
             
             // Back button, shows main page
             document.getElementById('extension-scenes-back-button-container').addEventListener('click', (event) => {
-                console.log("clicked on back button");
+                //console.log("scenes: clicked on back button");
                 document.getElementById('extension-scenes-content-container').classList.remove('extension-scenes-showing-second-page');
                 
                 // Undo the iphone fix, so that the main menu button is clickable again
@@ -138,7 +145,7 @@
 	
 		// This is called then the user navigates away from the addon. It's an opportunity to do some cleanup. To remove the HTML, for example, or stop running intervals.
 		hide() {
-			console.log("scenes hide called");
+			//console.log("scenes hide called");
 		}
         
     
@@ -161,7 +168,7 @@
                     {'action':'init','jwt':jwt}
 
 		        ).then((body) => {
-                    console.log("init response: ", body);
+                    //console.log("init response: ", body);
                     
                     // We have now received initial data from the addon, so we can hide the loading spinner by adding the 'hidden' class to it.
                     document.getElementById('extension-scenes-loading').classList.add('extension-scenes-hidden');
@@ -186,7 +193,9 @@
                         this.regenerate_items(body['scenes']);
                     }
                     else{
-                        console.log("no scenes saved yet");
+                        if(this.debug){
+                            console.log("no scenes saved yet");
+                        }
                     }
                     
 				
@@ -215,14 +224,14 @@
             document.getElementById('extension-scenes-view').scrollTop = 0;
             
             try {
-				console.log("regenerating. items: ", items);
+				
 		        if(this.debug){
-		            console.log("I am only here because debugging is enabled");
+                    console.log("scenes: debugging: regenerating. items: ", items);
 		        }
                 
                 let list_el = document.getElementById('extension-scenes-main-items-list'); // list element
                 if(list_el == null){
-                    console.log("Error, the main list container did not exist yet");
+                    console.log("Scenes: Error, the main list container did not exist yet");
                     return;
                 }
                 
@@ -230,7 +239,7 @@
                 
                 // If the items list does not contain actual items, then stop
                 if(scene_names.length == 0){
-                    list_el.innerHTML = '<p style="text-align:center">No scenes</p>';
+                    list_el.innerHTML = '<p style="text-align:center">Click on the (+) button to create a new scene</p>';
                     return
                 }
                 else{
@@ -246,14 +255,14 @@
 				
                 scene_names.sort();
                 
-                console.log("scene_names: ", scene_names);
+                //console.log("scene_names: ", scene_names);
                 
 				// Loop over all items in the list to create HTML for each item. 
                 // This is done by cloning an existing hidden HTML element, updating some of its values, and then appending it to the list element
 				for( var index in scene_names ){
 					
                     const item = scene_names[index];
-                    console.log("item: ", item);
+                    //console.log("item: ", item);
 					var clone = original.cloneNode(true); // Clone the original item
 					clone.removeAttribute('id'); // Remove the ID from the clone
                     
@@ -261,15 +270,24 @@
                     clone.querySelector(".extension-scenes-item-name").innerText = item; // The original and its clones use classnames to avoid having the same ID twice
                     //clone.getElementsByClassName("extension-scenes-item-value")[0].innerText = items[item].value; // another way to do the exact same thing - select the element by its class name
                      
+                    // Create a short description of what the scene does
+                    
+                    var summary = "";
+                    
+                    console.log("scene in regen length: ", Object.keys(items[item]).length);
+                    
+                    clone.querySelector(".extension-scenes-item-description").innerText = Object.keys(items[item]).length + " things";
+                    
+                    
                     
                     // You could add a specific CSS class to an element depending, for example depending on some value
                     //clone.classList.add('extension-scenes-item-highlighted');   
                     
                     
                     // ADD EDIT BUTTON
-                    const edit_button = clone.querySelectorAll('.extension-scenes-item-name')[0];
+                    const edit_button = clone.querySelectorAll('.extension-scenes-item-setter')[0];
                     edit_button.addEventListener('click', (event) => {
-                        console.log("edit button click. event: ", event);
+                        //console.log("edit button click. event: ", event);
                         
                         document.getElementById('extension-scenes-content-container').classList.add('extension-scenes-showing-second-page');
                         document.getElementById('extension-scenes-view').style.zIndex = '3';
@@ -284,16 +302,18 @@
                     play_button.setAttribute('data-name', item);
                     
 					play_button.addEventListener('click', (event) => {
-                        console.log("play button click. event: ", event);
+                        //console.log("play button click. event: ", event);
                         
 						// Inform backend
 						window.API.postJson(
 							`/extensions/${this.id}/api/ajax`,
 							{'action':'play','scene_name': event.target.dataset.name}
 						).then((body) => { 
-							console.log("play scene response: ", body);
+							if(this.debug){
+                                console.log("play scene response: ", body);
+                            }
                             if(body.state == true){
-                                console.log('the scene was started');
+                                //console.log('the scene was started');
                                 
                                 event.target.closest(".extension-scenes-item").classList.add('extension-scenes-last-selected'); // find the parent item
                                 // Remove the item form the list, or regenerate the entire list instead
@@ -312,7 +332,7 @@
                     delete_button.setAttribute('data-name', item);
                     
 					delete_button.addEventListener('click', (event) => {
-                        console.log("delete button click. event: ", event);
+                        //console.log("delete button click. event: ", event);
                         if(confirm("Are you sure you want to delete this scene?")){
     						
     						// Inform backend
@@ -320,9 +340,11 @@
     							`/extensions/${this.id}/api/ajax`,
     							{'action':'delete','scene_name': event.target.dataset.name}
     						).then((body) => { 
-    							console.log("delete item response: ", body);
+    							if(this.debug){
+                                    console.log("delete item response: ", body);
+                                }
                                 if(body.state == true){
-                                    console.log('the item was deleted on the backend');
+                                    //console.log('the item was deleted on the backend');
                                     
                                     event.target.closest(".extension-scenes-item").style.display = 'none'; // find the parent item
                                     // Remove the item form the list, or regenerate the entire list instead
@@ -360,16 +382,16 @@
             
             var scene_settings = {};
             if(typeof scene_name == 'undefined' || scene_name == null || scene_name == ""){
-                console.log("creating new scene");
+                //console.log("creating new scene");
                 document.getElementById('extension-scenes-edit-name').value = "";
             }
             else{
-                console.log("editing existing scene: " + scene_name);
+                //console.log("editing existing scene: " + scene_name);
                 document.getElementById('extension-scenes-edit-name').value = scene_name;
             }
             
             if(typeof this.scenes[scene_name] == 'undefined'){
-                console.log('non-existant scene');
+                //console.log('non-existant scene');
                 document.getElementById('extension-scenes-edit-name').value = "";
             }
             
@@ -379,9 +401,9 @@
     	    API.getThings().then((things) => {
 			
     			this.all_things = things;
-    			console.log("all things: ");
-    			console.log(things);
-			
+    			if(this.debug){
+                    console.log("scenes: debug: all things: ", things);
+                }
 			    
     			// pre-populate the hidden 'new' item with all the thing names
     			var thing_ids = [];
@@ -403,19 +425,19 @@
         				
 			
         				var thing_id = things[key]['href'].substr(things[key]['href'].lastIndexOf('/') + 1);
-                        console.log("thing_id: ", thing_id);
+                        //console.log("thing_id: ", thing_id);
                         
                         if(thing_id == 'scenes-thing'){
-                            console.log("FOUND IT scenes-thing");
+                            //console.log("FOUND IT scenes-thing");
                             continue;
                         }
                         
                         if (thing_id.startsWith('highlights-') ){
-    						console.log(thing_id + " starts with highlight-, so skipping.");
+    						//console.log(thing_id + " starts with highlight-, so skipping.");
     						continue;
                         }
                         
-                        console.log("thing_title and ID: ", thing_title, thing_id);
+                        //console.log("thing_title and ID: ", thing_title, thing_id);
                         
                         
         				//thing_ids.push( things[key]['href'].substr(things[key]['href'].lastIndexOf('/') + 1) );
@@ -589,7 +611,9 @@
                                 
                                 // unsupported property
                                 else{
-                                    console.log("Warning, unsupported property type. Skipping");
+                                    if(this.debug){
+                                        console.log("Scenes: Warning, unsupported property type. Skipping");
+                                    }
                                     continue;
                                 }
                                 
@@ -599,7 +623,7 @@
                                     if (typeof this.scenes[scene_name][thing_id] != 'undefined'){
                                         if (typeof this.scenes[scene_name][thing_id][property_id] != 'undefined'){
                                             if (this.scenes[scene_name][thing_id][property_id] != 'undefined'){
-                                                console.log("adding input value: ", this.scenes[scene_name][thing_id][property_id]);
+                                                //console.log("adding input value: ", this.scenes[scene_name][thing_id][property_id]);
                                                 input_el.value = this.scenes[scene_name][thing_id][property_id];
                                             }
                                         }
@@ -608,12 +632,12 @@
                                 
                                 // Automatically check the checkbox if the property is changed
                                 input_el.addEventListener('change', (event) => {
-        	                        console.log("Value changed. Event: ", event);
-                                    console.log("event.currentTarget.parentNode: ", event.currentTarget.parentNode);
+        	                        //console.log("Value changed. Event: ", event);
+                                    //console.log("event.currentTarget.parentNode: ", event.currentTarget.parentNode);
                                     const parent_el = event.currentTarget.closest('.extension-scenes-edit-item-property');
-                                    console.log("parent_el: ", parent_el);
+                                    //console.log("parent_el: ", parent_el);
                                     const checkbox_sibling = parent_el.getElementsByClassName('extension-scenes-edit-item-property-checkbox')[0];
-                                    console.log("checkbox_sibling: ", checkbox_sibling);
+                                    //console.log("checkbox_sibling: ", checkbox_sibling);
                                     checkbox_sibling.checked = true;
                                 });
                                 
@@ -641,7 +665,9 @@
                             document.getElementById('extension-scenes-edit-thing-settings').appendChild(thing_container);
                         }
                         else{
-                            console.log('thing has no writeable properties');
+                            if(this.debug){
+                                console.log('scenes:debug: thing has no writeable properties: ', thing_id);
+                            }
                         }
                         
                     
@@ -684,11 +710,11 @@
                         for (var i = 0; i < property_elements.length; i++) {
                             const property_item = property_elements[i];
                             const property_id = property_item.dataset.property_id;
-                            console.log("scanning property: ", property_id, property_item);
+                            //console.log("scanning property: ", property_id, property_item);
                             
                             let property_checkbox = property_item.getElementsByClassName('extension-scenes-edit-item-property-checkbox')[0];
                             if( property_checkbox.checked ){
-                                console.log("'\n\nPROPERTY CHECKED. thing_id: ", thing_id);
+                                //console.log("'\n\nPROPERTY CHECKED. thing_id: ", thing_id);
                                 
                                 if(typeof scene_settings[thing_id] == 'undefined'){
                                     scene_settings[thing_id] = {};
@@ -696,8 +722,7 @@
                                 
                                 let property_value_item = property_item.getElementsByClassName('extension-scenes-edit-item-property-value')[0];
                                 
-                                
-                                console.log('- value: ', property_value_item.value);
+                                //console.log('- value: ', property_value_item.value);
                                 
                                 var prop_value = property_value_item.value;
                                 if(prop_value == "" || prop_value == "unknown"){
@@ -730,7 +755,9 @@
                 return;
             }
             else{
-                console.log("\n\nscene_settings: ", scene_settings);
+                if(this.debug){
+                    console.log("\n\nscene_settings: ", scene_settings);
+                }
             }
             
             
@@ -746,9 +773,11 @@
 				{'action':action, 'scene_name':scene_name, 'scene_settings':scene_settings}
                 
 			).then((body) => {
-                console.log("save scene response: ", body);
+                if(this.debug){
+                    console.log("save scene response: ", body);
+                }
                 if(body.state == true){
-                    console.log("saving scene went ok");
+                    //console.log("saving scene went ok");
                     if(action == 'save_scene'){
                         document.getElementById('extension-scenes-content-container').classList.remove('extension-scenes-showing-second-page');
                         document.getElementById('extension-scenes-view').style.zIndex = 'auto';
@@ -757,12 +786,12 @@
                     }
                 }
                 else{
-                    console.log("saving new item failed!");
+                    //console.log("saving new item failed!");
                     alert("sorry, saving the scene failed.");
                 }
                 
 			}).catch((e) => {
-				console.log("scenes: connnection error after add new item button press: ", e);
+				console.log("scenes: connnection error after save item button press: ", e);
                 alert("failed to save scene: connection error");
 			});
             

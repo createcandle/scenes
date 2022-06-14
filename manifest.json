@@ -44,7 +44,7 @@
     }
   },
   "short_name": "scenes",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "web_accessible_resources": [
     "css/*.css",
     "images/*.svg",
