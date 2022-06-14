@@ -1,6 +1,5 @@
 {
-  "author": "Scenes",
-  "description": "Create scenes, which allow you to quickly switch the settings of a selection of devices",
+  "author": "CandleSmartHome.com",
   "content_scripts": [
     {
       "css": [
@@ -10,7 +9,8 @@
         "js/extension.js"
       ]
     }
-  ],  
+  ],
+  "description": "Quickly change the values of multiple things",
   "gateway_specific_settings": {
     "webthings": {
       "exec": "python3 {path}/main.py",
@@ -40,12 +40,11 @@
           "description": "Advanced. Causes extra information about the addon's functioning to be written to the internal log. Useful if there is an issue with the addon."
         }
       },
-      "required": [],
       "type": "object"
     }
   },
   "short_name": "scenes",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "web_accessible_resources": [
     "css/*.css",
     "images/*.svg",
