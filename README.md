@@ -1,5 +1,5 @@
 # Scenes
 
-Switch many things at once. Part of the Candle Smart Home
+Quickly change the values of multiple things. Part of the Candle Smart Home
 
 https://www.candlesmarthome.com
