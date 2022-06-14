@@ -230,7 +230,7 @@
                 
                 // If the items list does not contain actual items, then stop
                 if(scene_names.length == 0){
-                    list_el.innerHTML = "No scenes";
+                    list_el.innerHTML = '<p style="text-align:center">No scenes</p>';
                     return
                 }
                 else{
