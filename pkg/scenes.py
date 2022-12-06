@@ -135,7 +135,7 @@ class ScenesAdapter(Adapter):
             print("Error loading config: " + str(ex))
 
 
-        self.DEBUG = True
+        #self.DEBUG = True
 
         # 3. Now we check if all the values that should exist actually do
 
@@ -230,6 +230,7 @@ class ScenesAdapter(Adapter):
             if not config:
                 print("Warning, no config.")
                 return
+            
 
             # Let's start by setting the user's preference about debugging, so we can use that preference to output extra debugging information
             if 'Debugging' in config:
@@ -238,7 +239,7 @@ class ScenesAdapter(Adapter):
                     print("Debugging enabled")
 
             if self.DEBUG:
-                print(str(config)) # Print the entire config data
+                print("config: " + str(config)) # Print the entire config data
                 
             if 'Set last selected scene when addon starts' in config:
                 self.run_last_scene_at_addon_startup = bool(config['Set last selected scene when addon starts']) # sometime you may want the addon settings to override the persistent value
@@ -342,24 +343,19 @@ class ScenesAdapter(Adapter):
         
         timeout -- Timeout in seconds at which to quit pairing
         """
-        print("in start_pairing. Timeout: " + str(timeout))
+        #print("in start_pairing. Timeout: " + str(timeout))
         
         
     def cancel_pairing(self):
         """ Happens when the user cancels the pairing process."""
         # This happens when the user cancels the pairing process, or if it times out.
-        print("in cancel_pairing")
+        #print("in cancel_pairing")
         
 
     def unload(self):
         """ Happens when the user addon / system is shut down."""
         if self.DEBUG:
-            print("Bye!")
-            
-        try:
-            self.devices['scenes-thing'].properties['status'].update( "Bye")
-        except Exception as ex:
-            print("Error setting status on thing: " + str(ex))
+            print("in unload. Bye!")
         
         # Tell the controller to show the device as disconnected. This isn't really necessary, as the controller will do this automatically.
         self.devices['scenes-thing'].connected_notify(False)
@@ -430,7 +426,8 @@ class ScenesAdapter(Adapter):
                 print("self.gateway_version: " + str(self.gateway_version))
         
             if len(self.persistent_data['jwt']) < 10:
-                print("jwt token is too short")
+                if self.DEBUG:
+                    print("Error: jwt token is too short")
                 return
         
             simplified = False
@@ -537,7 +534,8 @@ class ScenesDevice(Device):
         # Create list of scene names for the scenes thing.
         scene_names = list(self.adapter.persistent_data['scenes'].keys())
         
-        print("scene_names: " + str(scene_names))
+        if self.DEBUG:
+            print("update_scene_property: scene_names: " + str(scene_names))
         if len(scene_names) > 0:
             self.adapter.scene_names = scene_names
             #print("remaking property? List: " + str(radio_stations_names))
@@ -554,7 +552,8 @@ class ScenesDevice(Device):
             self.adapter.handle_device_added(self)
             self.notify_property_changed(self.properties["scenes"])
         else:
-            print("no scenes exist yet")
+            if self.DEBUG:
+                print("update_scene_property: no scenes exist yet")
     
 
 
@@ -617,12 +616,12 @@ class ScenesAPIHandler(APIHandler):
 
     def __init__(self, adapter, verbose=False):
         """Initialize the object."""
-        print("INSIDE API HANDLER INIT")
+        #print("INSIDE API HANDLER INIT")
         
         self.adapter = adapter
         self.DEBUG = self.adapter.DEBUG
 
-        print("self.DEBUG in api handler: " + str(self.DEBUG))
+        #print("self.DEBUG in api handler: " + str(self.DEBUG))
         # Intiate extension addon API handler
         try:
             

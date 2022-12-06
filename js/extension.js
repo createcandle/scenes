@@ -261,22 +261,24 @@
                 // This is done by cloning an existing hidden HTML element, updating some of its values, and then appending it to the list element
 				for( var index in scene_names ){
 					
-                    const item = scene_names[index];
-                    //console.log("item: ", item);
+                    const item_name = scene_names[index];
+                    //console.log("item_name: ", item_name);
 					var clone = original.cloneNode(true); // Clone the original item
 					clone.removeAttribute('id'); // Remove the ID from the clone
                     
                     // Place the name in the clone
-                    clone.querySelector(".extension-scenes-item-name").innerText = item; // The original and its clones use classnames to avoid having the same ID twice
+                    clone.querySelector(".extension-scenes-item-name").innerText = item_name; // The original and its clones use classnames to avoid having the same ID twice
                     //clone.getElementsByClassName("extension-scenes-item-value")[0].innerText = items[item].value; // another way to do the exact same thing - select the element by its class name
                      
+                    clone.querySelector(".extension-scenes-item-setter").setAttribute('data-name', item_name);
                     // Create a short description of what the scene does
                     
                     var summary = "";
                     
-                    console.log("scene in regen length: ", Object.keys(items[item]).length);
+                    //console.log("scene in regen length: ", Object.keys(items[item]).length);
                     
-                    clone.querySelector(".extension-scenes-item-description").innerText = Object.keys(items[item]).length + " things";
+                    // show number of things
+                    clone.querySelector(".extension-scenes-item-description").innerText = Object.keys(items[item_name]).length + " things";
                     
                     
                     
@@ -285,21 +287,20 @@
                     
                     
                     // ADD EDIT BUTTON
-                    const edit_button = clone.querySelectorAll('.extension-scenes-item-setter')[0];
+                    const edit_button = clone.querySelector('.extension-scenes-item-setter');
                     edit_button.addEventListener('click', (event) => {
-                        //console.log("edit button click. event: ", event);
-                        
+                        console.log("edit button click. event: ", event);
+                        console.log(event.target.closest(".extension-scenes-item-setter").dataset.name);
                         document.getElementById('extension-scenes-content-container').classList.add('extension-scenes-showing-second-page');
                         document.getElementById('extension-scenes-view').style.zIndex = '3';
-                        this.edit_scene(event.target.innerText);
-                    
+                        this.edit_scene(event.target.closest(".extension-scenes-item-setter").dataset.name);
+                        // event.target.closest(".extension-scenes-item")
                     });
                     
                     
                     // ADD PLAY BUTTON
-                    
                     const play_button = clone.querySelectorAll('.extension-scenes-item-play-button')[0];
-                    play_button.setAttribute('data-name', item);
+                    play_button.setAttribute('data-name', item_name);
                     
 					play_button.addEventListener('click', (event) => {
                         //console.log("play button click. event: ", event);
@@ -329,7 +330,7 @@
                     
 					// ADD DELETE BUTTON
 					const delete_button = clone.querySelectorAll('.extension-scenes-item-delete-button')[0];
-                    delete_button.setAttribute('data-name', item);
+                    delete_button.setAttribute('data-name', item_name);
                     
 					delete_button.addEventListener('click', (event) => {
                         //console.log("delete button click. event: ", event);

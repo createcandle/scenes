@@ -14,9 +14,9 @@ extension-scenes-
   	height: 100%; /*calc(100% - 7.6rem);*/
   	box-sizing: border-box;
 	overflow: auto;
-	position: absolute;
+	/*position: absolute;
 	top: 7.6rem;
-	left: 0;
+	left: 0;*/
 	padding: 2rem;
     max-width: 100%;
 }
@@ -144,17 +144,17 @@ extension-scenes-
 
 .extension-scenes-item > div{
     padding:2rem;
+    box-sizing:border-box;
 }
 
 
-.extension-scenes-item-left{
-    margin-right:2rem;
-}
+
 
 .extension-scenes-item-main{
     display:flex;
     align-items: center;
     width:100%;
+    box-sizing:border-box;
 }
 
 .extension-scenes-item-setter{
@@ -462,13 +462,24 @@ extension-scenes-
     border-radius:.5rem;
 }
 
+#extension-scenes-tabs-container{
+    box-sizing:border-box;
+}
 
+#extension-scenes-main-page{
+    padding-left:6rem;
+    box-sizing:border-box;
+}
+
+@media screen and (min-width: 761px){
+    #extension-scenes-main-page{
+        padding-right:6rem;
+    }
+}
 
 @media screen and (max-width: 760px) {
 
-    #extension-scenes-main-page{
-        padding-left:6rem;
-    }
+    
     
     .extension-scenes-edit-item-property{
         max-width:100%;
@@ -476,10 +487,19 @@ extension-scenes-
 
 }
 
+@media screen and (min-width: 761px) and (max-width: 1024px) {
+    
+}
+
+
 @media screen and (min-width: 641px) {
     .extension-scenes-item{
         display:flex;
         justify-content:space-between;
+    }
+    
+    .extension-scenes-item-left{
+        margin-right:2rem;
     }
 }
 
