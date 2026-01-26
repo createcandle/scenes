@@ -1,70 +1,24 @@
-"""
-
-Example addon for Candle Controller / Webthings Gateway.
-
-This addon has the following hierarchy:
-
-Adapter
-- Device (1x)
-- - Property (4x)
-- API handler
-
-
-"""
-
-
 import os
 import sys
-# This helps the addon find python libraries it comes with, which are stored in the "lib" folder. The "package.sh" file will download Python libraries that are mentioned in requirements.txt and place them there.
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib')) 
 
 import json
 import time
-#import datetime
 import requests  # noqa
-#import threading
-#import subprocess
-
-# This loads the parts of the addon.
+import threading
 from gateway_addon import Database, Adapter, Device, Property, APIHandler, APIResponse
-# Database - needed to read from the settings database. If your addon doesn't have any settings, then you don't need this.
 
-# Adapter. Needed if you want to provide things' to the controller.
-# Device. Needed if you want to provide things' to the controller.
-# Property. Needed if you want to provide things' to the controller.
-
-# APIHandler. Needed if you want to provide an API for a UI extension.
-# APIResponse. Needed if you want to provide an API for a UI extension.
-
-# This addon does not load part from other files, but if you had a big addon you might want to split it into separate parts. For example, you could have a file called "scenes_api_handler.py" at the same level as scenes.py, and import it like this:
-#try:
-#    from .internet_radio_api_handler import *
-#    print("APIHandler imported")
-#except Exception as ex:
-#    print("Error, unable to load APIHandler: " + str(ex))
-
-
-# Not sure what this is used for, but leave it in.
 _TIMEOUT = 3
 
-# Not sure what this is used for either, but leave it in.
 _CONFIG_PATHS = [
     os.path.join(os.path.expanduser('~'), '.webthings', 'config'),
 ]
 
-# Not sure what this is used for either, but leave it in.
 if 'WEBTHINGS_HOME' in os.environ:
     _CONFIG_PATHS.insert(0, os.path.join(os.environ['WEBTHINGS_HOME'], 'config'))
 
 
 
-
-# The adapter is the top level of this hierarchy
-
-# Adapter  <- you are here
-# - Device  
-# - - Property  
-# - Api handler
 
 class ScenesAdapter(Adapter):
     """Adapter for addon """
@@ -76,14 +30,14 @@ class ScenesAdapter(Adapter):
         verbose -- whether or not to enable verbose logging
         """
         
-        #print("Starting adapter init")
-
         self.ready = False # set this to True once the init process is complete.
         self.addon_name = 'scenes'
         
         
         self.name = self.__class__.__name__ # TODO: is this needed?
         Adapter.__init__(self, self.addon_name, self.addon_name, verbose=verbose)
+
+        self.running = True
 
         # set up some variables
         self.DEBUG = False
@@ -92,16 +46,7 @@ class ScenesAdapter(Adapter):
         
 
         self.run_last_scene_at_addon_startup = False
-        
-
-
-        # There is a very useful variable called "user_profile" that has useful values from the controller.
-        #print("self.user_profile: " + str(self.user_profile))
-        
-        
-        # This addon has a "hidden parent" itself, the manager_proxy.
-        #print("self.adapter.manager_proxy: " + str(self.adapter.manager_proxy))
-        
+    
         
         # Create some path strings. These point to locations on the drive.
         self.addon_path = os.path.join(self.user_profile['addonsDir'], self.addon_name) # addonsDir points to the directory that holds all the addons (/home/pi/.webthings/addons).
@@ -139,32 +84,64 @@ class ScenesAdapter(Adapter):
 
         # 3. Now we check if all the values that should exist actually do
 
+        self.should_save_persistent_data = False
+        
         if 'state' not in self.persistent_data:
             self.persistent_data['state'] = False
+            self.should_save_persistent_data = True
 
         if 'slider' not in self.persistent_data:
             self.persistent_data['slider'] = 0
+            self.should_save_persistent_data = True
             
         if 'dropdown' not in self.persistent_data:
             self.persistent_data['dropdown'] = 'Auto'
+            self.should_save_persistent_data = True
 
         if 'scenes' not in self.persistent_data:
             self.persistent_data['scenes'] = {}
+            self.should_save_persistent_data = True
 
         if 'current_scene' not in self.persistent_data:
             self.persistent_data['current_scene'] = "no name yet"
+            self.should_save_persistent_data = True
+
+        if 'timers' not in self.persistent_data:
+            self.persistent_data['timers'] = {}
+            self.should_save_persistent_data = True
 
         if 'jwt' not in self.persistent_data:
             self.persistent_data['jwt'] = ""
+            self.should_save_persistent_data = True
 
 
+        # migrate old data to newer data scheme for timers
+        scene_names = list(self.persistent_data['scenes'].keys())
+        if len(scene_names) > 0:
+            for scene_name in scene_names:
+                #print("checking if scene needs update: " + str(scene_name))
+                if not 'name' in self.persistent_data['scenes'][scene_name]:
+                    #print("updating scene to new scheme: " + str(scene_name))
+                    self.persistent_data['scenes'][scene_name] = {'name':scene_name,'things':self.persistent_data['scenes'][scene_name]}
+                    self.should_save_persistent_data = True
 
-        # Respond to gateway version
+        
+        
         try:
             if self.DEBUG:
                 print("Gateway version: " + str(self.gateway_version))
-        except:
-            print("self.gateway_version did not exist")
+            
+            # prune old timers from persistent data
+            timer_scene_ids = list(self.persistent_data['timers'].keys())
+        
+            for timer_scene_id in timer_scene_ids:
+                if self.persistent_data['timers'][timer_scene_id]['time'] < time.time():
+                    if self.DEBUG:
+                        print("scenes init: pruning old scene timer: " + str(self.persistent_data['timers'][timer_scene_id]))
+                    del self.persistent_data['timers'][timer_scene_id]
+            
+        except Exception as ex:
+            print("scenes init: caught error pruning old timers: " + str(ex))
             
 
         # Start the API handler. This will allow the user interface to connect
@@ -195,12 +172,17 @@ class ScenesAdapter(Adapter):
             self.devices['scenes-thing'].connected_notify(True)
 
         except Exception as ex:
-            print("Could not create internet_radio_device: " + str(ex))
-
-
+            if self.DEBUG:
+                print("Could not create scenes-thing: " + str(ex))
         
-        # Just in case any new values were created in the persistent data store, let's save if to disk
-        self.save_persistent_data()
+        if self.DEBUG:
+            print("Starting the internal clock")
+        try:
+            t = threading.Thread(target=self.clock)
+            t.daemon = True
+            t.start()
+        except:
+            print("Error starting the clock thread")
         
         # The addon is now ready
         self.ready = True 
@@ -254,48 +236,105 @@ class ScenesAdapter(Adapter):
 
 
     #
+    #  CLOCK
+    #
+
+    def clock(self):
+        """ Runs every second """
+        
+        while self.running:
+            
+            time.sleep(1)
+            
+            try:
+                timer_scene_ids = list(self.persistent_data['timers'].keys())
+                
+                for timer_scene_id in timer_scene_ids:
+                    #if self.DEBUG:
+                    #    print("checking timer_scene_id: " + str(timer_scene_id))
+                        
+                    if not 'start_time' in self.persistent_data['timers'][timer_scene_id]:
+                         del self.persistent_data['timers'][timer_scene_id]
+                         
+                    if self.persistent_data['timers'][timer_scene_id]['start_time'] < time.time() - 5:
+                        if self.DEBUG:
+                            print("scenes clock: deleting a timer that should have been acted on over 5 seconds ago: " + str(self.persistent_data['timers'][timer_scene_id]))
+                        del self.persistent_data['timers'][timer_scene_id]
+                         
+                    elif self.persistent_data['timers'][timer_scene_id]['start_time'] < time.time():
+                        if self.DEBUG:
+                            print("scenes clock: found a timer that should be run now: " + str(self.persistent_data['timers'][timer_scene_id]))
+                        
+                        del self.persistent_data['timers'][timer_scene_id]
+                        self.set_scene(timer_scene_id)
+            
+            except Exception as ex:
+                if self.DEBUG:
+                    print("clock: caught error looping over timers: " + str(ex))
+            
+            if self.should_save_persistent_data:
+                if self.DEBUG:
+                    print("clock: saving to persistent data")
+                self.should_save_persistent_data = False
+                self.save_persistent_data()
+            
+        if self.DEBUG:
+            print("scenes clock: beyond while loop (clock stopped)")
+
+
+
+
+    #
     #  CHANGING THE PROPERTIES
     #
         
-        
-    def set_scene(self,value):
+    def set_scene(self,scene_id):
         try:
             if self.DEBUG:
-                print("in set_scene with value: " + str(value))
-            if value in self.persistent_data['scenes']:
+                print("in set_scene with scene_id: " + str(scene_id))
+            if scene_id in self.persistent_data['scenes']:
                 
                 # saves the new state in the persistent data file, so that the addon can restore the correct state if it restarts
-                if self.persistent_data['current_scene'] != value:
-                    self.persistent_data['current_scene'] = value
-                    self.save_persistent_data() 
+                if self.persistent_data['current_scene'] != scene_id:
+                    self.persistent_data['current_scene'] = scene_id
+                    self.should_save_persistent_data = True
         
                 # A cool feature: you can create popups in the interface this way:
-                self.send_pairing_prompt("Scene: " + str(value))
+                self.send_pairing_prompt("Scene: " + str(self.persistent_data['scenes'][scene_id]['name']))
         
-                self.actually_set_scene(self.persistent_data['scenes'][value])
+                self.actually_set_scene(self.persistent_data['scenes'][scene_id]['things'])
                 
-        
                 try:
-                    self.devices['scenes-thing'].properties['scenes'].update( value )
+                    self.devices['scenes-thing'].properties['scenes'].update( self.persistent_data['scenes'][scene_id]['name'] )
                 except Exception as ex:
-                    print("error setting dropdown value on thing: " + str(ex))
-        
+                    if self.DEBUG:
+                        print("error setting dropdown value on thing: " + str(ex))
                 
+                if 'timer' in self.persistent_data['scenes'][scene_id] and self.persistent_data['scenes'][scene_id]['timer'] != None and 'next_scene_id' in self.persistent_data['scenes'][scene_id]['timer']:
+                    now_time = time.time()
+                    scene_duration = int(self.persistent_data['scenes'][scene_id]['timer']['seconds'])
+                    start_time = now_time + scene_duration
+                    next_scene_id = self.persistent_data['scenes'][scene_id]['timer']['next_scene_id']
+                    
+                    self.persistent_data['timers'][next_scene_id] = {'scene_id':next_scene_id, 'name': self.persistent_data['scenes'][scene_id]['name'], 'parent_scene_id':scene_id ,'start_time':start_time, 'creation_time':now_time}
+                    self.should_save_persistent_data = True
+                    
             else:
                 print("Error, that scene does not exist")
         except Exception as ex:
             if self.DEBUG:
                 print("error in set_scene: " + str(ex))
 
-    def actually_set_scene(self,dictionary):
+
+    def actually_set_scene(self,things_dictionary):
         if self.DEBUG:
-            print("in actually_set_scene. Dictionary: " + str(dictionary))
+            print("in actually_set_scene. things_dictionary: " + str(things_dictionary))
         try:
-            for thing_id in dictionary:
+            for thing_id in things_dictionary:
                 #print("set_scene: thing_id: " + str(thing_id))
             
-                for property_id in dictionary[thing_id]:
-                    property_value = dictionary[thing_id][property_id]
+                for property_id in things_dictionary[thing_id]:
+                    property_value = things_dictionary[thing_id][property_id]
             
                     api_path = '/things/' + str(thing_id) + '/properties/' + str(property_id)
                     
@@ -312,8 +351,7 @@ class ScenesAdapter(Adapter):
                         property_value = None
                     elif property_value.isnumeric():
                         property_value = get_int_or_float(property_value)
-            
-            
+                    
                     json_dict = {property_id:property_value}
                 
                     if self.DEBUG:
@@ -357,20 +395,18 @@ class ScenesAdapter(Adapter):
         if self.DEBUG:
             print("in unload. Bye!")
         
-        # Tell the controller to show the device as disconnected. This isn't really necessary, as the controller will do this automatically.
+        self.running = False
+        
         self.devices['scenes-thing'].connected_notify(False)
         
-        # A final chance to save the data.
-        self.save_persistent_data()
+
 
 
     def remove_thing(self, device_id):
         """ Happens when the user deletes the thing."""
-        #print("user deleted the thing")
         try:
-            # We don't have to delete the thing in the addon, but we can.
             obj = self.get_device(device_id)
-            self.handle_device_removed(obj) # Remove from device dictionary
+            self.handle_device_removed(obj)
             if self.DEBUG:
                 print("User removed thing")
         except:
@@ -400,11 +436,11 @@ class ScenesAdapter(Adapter):
                 if self.DEBUG:
                     print("saving: " + str(self.persistent_data))
                 try:
-                    json.dump( self.persistent_data, open( self.persistence_file_path, 'w+' ) )
+                    with open( self.persistence_file_path, 'w' ) as f:
+                        json.dump( self.persistent_data, f, indent=4)
                 except Exception as ex:
                     print("Error saving to persistence file: " + str(ex))
                 return True
-            #self.previous_persistent_data = self.persistent_data.copy()
 
         except Exception as ex:
             if self.DEBUG:
@@ -449,42 +485,60 @@ class ScenesAdapter(Adapter):
                     #to_return = {}
             
             
+            headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': 'Bearer {}'.format(self.persistent_data['jwt']),
+            }
+            
+            
+            try:
+                if self.DEBUG:
+                    print("sending this json_dict: " + str(json_dict))
+                    
+                r = requests.put(
+                    self.api_server + api_path,
+                    json=json_dict,
+                    headers=headers,
+                    verify=False,
+                    timeout=2
+                )
+                if self.DEBUG:
+                    print("API PUT: " + str(r.status_code) + ", " + str(r.reason))
+                    print("PUT returned r.text: " + str(r.text))
+
+                if r.status_code == 204:
+                    if simplified:
+                        return_value = {property_was:json_dict} #simpler_value # json.loads('{"' + property_was + '":' + r.text + '}')
+                    else:
+                        return_value = json_dict
+                
+                    return_value['succes'] = True
+                    return return_value
+                    
+                elif r.status_code == 200:
+                    if simplified:
+                        return_value = {property_was:json.loads(r.text)} # json.loads('{"' + property_was + '":' + r.text + '}')
+                    else:
+                        return_value = json.loads(r.text)
+                
+                    return_value['succes'] = True
+                    return return_value
+                    
+                else:
+                    if self.DEBUG:
+                        print("Error communicating: " + str(r.status_code))
+                    return {"error": str(r.status_code)}
+
+            except Exception as ex:
+                print("Error doing http request/loading returned json: " + str(ex))
+                return {"error": 500}
+            
+            
         except Exception as ex:
             print("Error preparing PUT: " + str(ex))
 
-        headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': 'Bearer {}'.format(self.persistent_data['jwt']),
-        }
-        try:
-            r = requests.put(
-                self.api_server + api_path,
-                json=json_dict,
-                headers=headers,
-                verify=False,
-                timeout=5
-            )
-            if self.DEBUG:
-                print("API PUT: " + str(r.status_code) + ", " + str(r.reason))
-                print("PUT returned: " + str(r.text))
-
-            if r.status_code != 200:
-                if self.DEBUG:
-                    print("Error communicating: " + str(r.status_code))
-                return {"error": str(r.status_code)}
-            else:
-                if simplified:
-                    return_value = {property_was:json.loads(r.text)} # json.loads('{"' + property_was + '":' + r.text + '}')
-                else:
-                    return_value = json.loads(r.text)
-                
-                return_value['succes'] = True
-                return return_value
-
-        except Exception as ex:
-            print("Error doing http request/loading returned json: " + str(ex))
-            return {"error": 500}
+        
 
 
 
@@ -492,12 +546,8 @@ class ScenesAdapter(Adapter):
 # DEVICE
 #
 
-# This addon is very basic, in that it only creates a single thing.
-# The device can be seen as a "child" of the adapter
-
-
 class ScenesDevice(Device):
-    """Internet Radio device type."""
+    """Scenes device type."""
 
     def __init__(self, adapter):
         """
@@ -528,17 +578,19 @@ class ScenesDevice(Device):
         if self.DEBUG:
             print("thing has been created.")
 
-    # Creates these options "on the fly", as radio stations get added and removed.
+    # Creates these options "on the fly"
     def update_scene_property(self, call_handle_device_added=True):
-        #print("in update_stations_property")
-        # Create list of scene names for the scenes thing.
-        scene_names = list(self.adapter.persistent_data['scenes'].keys())
+        
+        scene_names = []
+        scene_ids = list(self.adapter.persistent_data['scenes'].keys())
+        
+        for scene_id in scene_ids:
+            scene_names.append(self.adapter.persistent_data['scenes'][scene_id]['name'])
         
         if self.DEBUG:
             print("update_scene_property: scene_names: " + str(scene_names))
         if len(scene_names) > 0:
             self.adapter.scene_names = scene_names
-            #print("remaking property? List: " + str(radio_stations_names))
             self.properties["scenes"] = ScenesProperty(
                             self,
                             "scenes",
@@ -567,35 +619,40 @@ class ScenesProperty(Property):
         
         Property.__init__(self, device, name, description)
         
-        self.device = device # a way to easily access the parent device, of which this property is a child.
+        self.device = device
         
-        # TODO: set the ID properly?
         self.id = name
-        self.name = name # TODO: is name still used?
-        self.title = name # TODO: the title isn't really being set?
-        self.description = description # a dictionary that holds the details about the property type
-        self.value = value # the value of the property
+        self.name = name
+        self.title = name
+        self.description = description
+        self.value = value
         
         # Notifies the controller that this property has a (initial) value
         self.set_cached_value(value)
         self.device.notify_property_changed(self)
         
-        print("property: initiated: " + str(self.title) + ", with value: " + str(value))
+        if self.device.adapter.DEBUG:
+            print("property: initiated: " + str(self.title) + ", with value: " + str(value))
 
 
     def set_value(self, value):
-                
         try:
-            if self.id == 'scenes':
-                self.device.adapter.set_scene(str(value))
+            if self.device.adapter.DEBUG:
+                print("property: set_value: " + str(value))
                 
-        
+            if self.id == 'scenes':
+                scene_ids = self.device.adapter.persistent_data['scenes'].keys()
+                for scene_id in scene_ids:
+                    if self.device.adapter.persistent_data['scenes'][scene_id]['name'] == str(value):
+                        if self.device.adapter.DEBUG:
+                            print("property: found scene_id for scene name: " + str(value) + " -> " + str(scene_id))
+                        self.device.adapter.set_scene(str(scene_id))
+                
         except Exception as ex:
             print("property: set_value error: " + str(ex))
 
 
     def update(self, value):
-         
         if value != self.value:
             self.value = value
             self.set_cached_value(value)
@@ -616,16 +673,13 @@ class ScenesAPIHandler(APIHandler):
 
     def __init__(self, adapter, verbose=False):
         """Initialize the object."""
-        #print("INSIDE API HANDLER INIT")
         
         self.adapter = adapter
         self.DEBUG = self.adapter.DEBUG
 
-        #print("self.DEBUG in api handler: " + str(self.DEBUG))
-        # Intiate extension addon API handler
         try:
             
-            APIHandler.__init__(self, self.adapter.addon_name) # gives the api handler the same id as the adapter
+            APIHandler.__init__(self, self.adapter.addon_name)
             self.manager_proxy.add_api_handler(self) # tell the controller that the api handler now exists
             
         except Exception as e:
@@ -664,16 +718,18 @@ class ScenesAPIHandler(APIHandler):
                     
                     
                     # INIT (AND SAVE TOKEN AGAIN)
+                    # POLL
                     if action == 'init':
                         if self.DEBUG:
-                            print("API: in init")
+                            print("API: in init/poll")
                         
                         try:
-                            if len(str(request.body['jwt'])) > 20:
-                                self.adapter.persistent_data['jwt'] = str(request.body['jwt'])
-                            else:
-                                if self.DEBUG:
-                                    print("API: init: token not long enough")
+                            if 'jwt' in request.body.keys():
+                                if len(str(request.body['jwt'])) > 20:
+                                    self.adapter.persistent_data['jwt'] = str(request.body['jwt'])
+                                else:
+                                    if self.DEBUG:
+                                        print("API: init: token not long enough")
                         except Exception as ex:
                             if self.DEBUG:
                                 print("Error: Api: init: could not save token: " + str(ex))
@@ -682,12 +738,28 @@ class ScenesAPIHandler(APIHandler):
                                 status=200,
                                 content_type='application/json',
                                 content=json.dumps({
+                                      'token_length': len(self.adapter.persistent_data['jwt']),
                                       'scenes': self.adapter.persistent_data['scenes'],
+                                      'timers': self.adapter.persistent_data['timers'],
                                       'debug': self.adapter.DEBUG
                                       }),
                         )
                         
+                        
+                    elif action == 'get_timers':
+                        if self.DEBUG:
+                            print("API: in get_timers")
+                            
+                        return APIResponse(
+                                status=200,
+                                content_type='application/json',
+                                content=json.dumps({
+                                      'timers': self.adapter.persistent_data['timers']
+                                      }),
+                        )
                     
+                    
+                        
                     # SAVE TOKEN
                     elif action == 'save_token':
                         if self.adapter.DEBUG:
@@ -722,17 +794,17 @@ class ScenesAPIHandler(APIHandler):
                         state = False
                         
                         try:
-                            scene_name = str(request.body['scene_name'])
+                            scene_id = str(request.body['scene_id'])
                             scene_settings = request.body['scene_settings']
                             
                             if self.DEBUG:
-                                print("incoming scene_name: " + str(scene_name))
+                                print("incoming scene_id: " + str(scene_id))
                                 print("incoming scene_settings: " + str(scene_settings))
                             
-                            self.adapter.persistent_data['scenes'][scene_name] = scene_settings
+                            self.adapter.persistent_data['scenes'][scene_id] = scene_settings #{'name':scene_name,'things':scene_settings,'timer':scene_timer}
                             #print("self.adapter.persistent_data['scenes']: " + str(self.adapter.persistent_data['scenes']))
                             
-                            self.adapter.save_persistent_data()
+                            self.adapter.should_save_persistent_data = True
                             
                             self.adapter.devices['scenes-thing'].update_scene_property()
                             
@@ -748,6 +820,7 @@ class ScenesAPIHandler(APIHandler):
                           content_type='application/json',
                           content=json.dumps({'state' : state,
                                               'scenes': self.adapter.persistent_data['scenes'],
+                                              'timers': self.adapter.persistent_data['timers'],
                                               }),
                         )
                     
@@ -761,12 +834,14 @@ class ScenesAPIHandler(APIHandler):
                     
                         try:
                             scene_settings = request.body['scene_settings']
+                            
                             if self.DEBUG:
                                 print("incoming scene_settings: " + str(scene_settings))
+                            if 'things' in scene_settings:
                         
-                            self.adapter.actually_set_scene(scene_settings)
+                                self.adapter.actually_set_scene(scene_settings['things'])
                         
-                            state = True
+                                state = True
                         
                         except Exception as ex:
                             if self.DEBUG:
@@ -782,8 +857,37 @@ class ScenesAPIHandler(APIHandler):
                     
                     
                     
-                    # DELETE
-                    # In this example we call out to a separate delete method instead of handling the action directly
+                    
+                    
+                    # DELETE TIMER
+                    
+                    elif action == 'delete_timer':
+                        if self.DEBUG:
+                            print("API: in delete_timer")
+                        
+                        state = False
+                        
+                        try:
+                            scene_id = str(request.body['scene_id'])
+                            if scene_id in self.adapter.persistent_data['timers']:
+                                del self.adapter.persistent_data['timers'][scene_id]
+                                self.adapter.should_save_persistent_data = True
+                                state = True
+                            
+                        except Exception as ex:
+                            if self.DEBUG:
+                                print("Error deleting: " + str(ex))
+                        
+                        return APIResponse(
+                          status=200,
+                          content_type='application/json',
+                          content=json.dumps({'state' : state}),
+                        )
+                    
+                    
+                    
+                    # DELETE SCENE
+                    
                     elif action == 'delete':
                         if self.DEBUG:
                             print("API: in delete")
@@ -791,13 +895,14 @@ class ScenesAPIHandler(APIHandler):
                         state = False
                         
                         try:
-                            scene_name = str(request.body['scene_name'])
-                            del self.adapter.persistent_data['scenes'][scene_name]
-                            self.adapter.save_persistent_data()
+                            scene_id = str(request.body['scene_id'])
+                            if scene_id in self.adapter.persistent_data['scenes']:
+                                del self.adapter.persistent_data['scenes'][scene_id]
+                                self.adapter.should_save_persistent_data = True
                             
-                            self.adapter.devices['scenes-thing'].update_scene_property()
+                                self.adapter.devices['scenes-thing'].update_scene_property()
                             
-                            state = True
+                                state = True
                             
                         except Exception as ex:
                             if self.DEBUG:
@@ -818,10 +923,10 @@ class ScenesAPIHandler(APIHandler):
                         state = False
                         
                         try:
-                            scene_name = str(request.body['scene_name'])
+                            scene_id = str(request.body['scene_id'])
                             if self.DEBUG:
-                                print("API: request to play: " + str(scene_name))
-                            self.adapter.set_scene(scene_name)
+                                print("API: request to play: " + str(scene_id))
+                            self.adapter.set_scene(scene_id)
                             state = True
                             
                         except Exception as ex:
@@ -831,7 +936,7 @@ class ScenesAPIHandler(APIHandler):
                         return APIResponse(
                           status=200,
                           content_type='application/json',
-                          content=json.dumps({'state' : state}),
+                          content=json.dumps({'state':state, 'timers':self.adapter.persistent_data['timers']}),
                         )
                         
                     

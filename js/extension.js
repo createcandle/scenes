@@ -7,7 +7,11 @@
             
             this.all_things = [];
             this.scenes = {};
+			this.timers = {};
+			
+			this.getting_timers = false;
             
+			//this.busy_editing_a_scene = false;
             
 			//console.log("Adding scenes addon to main menu");
 			this.addMenuEntry('Scenes');
@@ -96,7 +100,11 @@
                 this.save_scene(true);
             });
             
-            
+			// Show timers tutorial
+            document.getElementById('extension-scenes-edit-thing-timers-learn-more-button').addEventListener('click', (event) => {
+            	document.getElementById('extension-scenes-edit-thing-timers-learn-more-button').style.display = 'none';
+				document.getElementById('extension-scenes-edit-thing-timers-tutorial').classList.remove('extension-scenes-hidden');
+            });
             
             
             
@@ -116,6 +124,8 @@
                 
                 // iPhones need this fix to make the back button lay on top of the main menu button
                 document.getElementById('extension-scenes-view').style.zIndex = '3';
+				document.getElementById('extension-scenes-edit-id').value = '';
+				
                 this.edit_scene();
                 
 			});
@@ -124,10 +134,14 @@
             document.getElementById('extension-scenes-back-button-container').addEventListener('click', (event) => {
                 //console.log("scenes: clicked on back button");
                 document.getElementById('extension-scenes-content-container').classList.remove('extension-scenes-showing-second-page');
-                
+                //this.busy_editing_a_scene = false;
+				
                 // Undo the iphone fix, so that the main menu button is clickable again
                 document.getElementById('extension-scenes-view').style.zIndex = 'auto';
                 
+            	document.getElementById('extension-scenes-edit-thing-timers-learn-more-button').style.display = 'initial';
+				document.getElementById('extension-scenes-edit-thing-timers-tutorial').classList.add('extension-scenes-hidden');
+				
                 this.get_init_data(); // repopulate the main page
                 
 			});
@@ -138,12 +152,37 @@
             
             // Finally, request the first data from the addon's API
             this.get_init_data();
-            
+			let timers_counter = 0;
+			let content_el = this.view.querySelector('#extension-scenes-content-container');
+			if(content_el){
+				content_el.scenes_interval = setInterval(() => {
+					
+					if(!content_el.classList.contains('extension-scenes-showing-second-page')){
+						this.generate_timers_list();
+					}
+					
+					timers_counter++;
+					if(timers_counter > 10){
+						timers_counter = 0;
+						this.get_timers();
+					}
+					
+					if(timers_counter == 5 && this.getting_timers == false){
+						this.get_timers();
+					}
+					
+					if( !document.location.href.endsWith("extensions/scenes") ){
+						console.log("user navigated away from scenes addon. Stopping scenes interval");
+						clearInterval(content_el.scenes_interval);
+						document.getElementById('extension-scenes-view').innerHTML = '';
+					}
+					
+				},1000);
+			}
             
 		}
 		
 	
-		// This is called then the user navigates away from the addon. It's an opportunity to do some cleanup. To remove the HTML, for example, or stop running intervals.
 		hide() {
 			//console.log("scenes hide called");
 		}
@@ -194,23 +233,41 @@
                     }
                     else{
                         if(this.debug){
-                            console.log("no scenes saved yet");
+                            console.log("scenes debug: no scenes saved yet");
                         }
                     }
-                    
+                    if(typeof body.timers != 'undefined'){
+                        this.timers = body['timers'];
+                        this.generate_timers_list();
+                    }
 				
-		        }).catch((e) => {
-		  			console.log("Error getting Scenes init data: ", e);
+		        }).catch((err) => {
+		  			console.error("Scenes: error getting init data: ", err);
 		        });	
 
 			}
-			catch(e){
-				console.log("Error in API call to init: ", e);
+			catch(err){
+				console.error("Scenes: caught error in API call to init: ", err);
 			}
         }
     
 
         
+        get_timers(){
+			this.getting_timers = true;
+	        window.API.postJson(
+	          `/extensions/${this.id}/api/ajax`,
+                {'action':'get_timers'}
+	        ).then((body) => {
+                if(typeof body.timers != 'undefined'){
+                    this.timers = body['timers'];
+					this.getting_timers = false;
+                }
+	        }).catch((err) => {
+	  			console.error("Scenes: caught error getting timers data via API: ", err);
+				this.getting_timers = false;
+	        });	
+        }
         
     
 	
@@ -231,11 +288,22 @@
                 
                 let list_el = document.getElementById('extension-scenes-main-items-list'); // list element
                 if(list_el == null){
-                    console.log("Scenes: Error, the main list container did not exist yet");
+                    console.error("Scenes: Error, the main list container did not exist yet");
                     return;
                 }
                 
-                const scene_names = Object.keys(items);
+                let scene_names = [];
+				let reverse_lookup = {};
+				for (const [scene_id, details] of Object.entries(items)) {
+					if(typeof details['name'] == 'string' && details['name'].length){
+						reverse_lookup[ details['name'] ] = scene_id;
+						scene_names.push(details['name']);
+					}
+				}
+				
+				if(this.debug){
+					//console.log("scenes debug: regenerate_item: reverse_lookup: ", reverse_lookup);
+				}
                 
                 // If the items list does not contain actual items, then stop
                 if(scene_names.length == 0){
@@ -250,12 +318,10 @@
 				const original = document.getElementById('extension-scenes-original-item');
 			    //console.log("original: ", original);
                 
-			    // Since each item has a name, here we're sorting the list based on that name first
-				//items.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1)
 				
                 scene_names.sort();
                 
-                //console.log("scene_names: ", scene_names);
+                //console.log("alphabetically sorted scene_names: ", scene_names);
                 
 				// Loop over all items in the list to create HTML for each item. 
                 // This is done by cloning an existing hidden HTML element, updating some of its values, and then appending it to the list element
@@ -273,12 +339,35 @@
                     clone.querySelector(".extension-scenes-item-setter").setAttribute('data-name', item_name);
                     // Create a short description of what the scene does
                     
+					clone.querySelector(".extension-scenes-item-setter").setAttribute('data-scene_id', reverse_lookup[item_name]);
+					
+					
+					
                     var summary = "";
                     
                     //console.log("scene in regen length: ", Object.keys(items[item]).length);
                     
-                    // show number of things
-                    clone.querySelector(".extension-scenes-item-description").innerText = Object.keys(items[item_name]).length + " things";
+					let item_description = '';
+					const scene_things_count = Object.keys(items[ reverse_lookup[ item_name ] ]['things']).length;
+					item_description += scene_things_count;
+					if(scene_things_count == 1){
+						item_description += ' thing'
+					}
+					else{
+						item_description += ' things'
+					}
+					
+					if(typeof items[ reverse_lookup[ item_name ] ]['timer'] != 'undefined' && typeof items[ reverse_lookup[ item_name ] ]['timer']['next_scene_id'] == 'string'){
+						const next_scene_id = items[ reverse_lookup[ item_name ] ]['timer']['next_scene_id'];
+						if(typeof items[ next_scene_id ]['name'] == 'string' && items[ next_scene_id ]['name'].length){
+							const next_scene_name = items[ next_scene_id ]['name'];
+							item_description += ', starts ' + next_scene_name;
+						}
+						
+					}
+                    
+						
+                    clone.querySelector(".extension-scenes-item-description").innerText = item_description;
                     
                     
                     
@@ -289,40 +378,55 @@
                     // ADD EDIT BUTTON
                     const edit_button = clone.querySelector('.extension-scenes-item-setter');
                     edit_button.addEventListener('click', (event) => {
-                        console.log("edit button click. event: ", event);
-                        console.log(event.target.closest(".extension-scenes-item-setter").dataset.name);
+                        //console.log("edit button click. event: ", event);
+						if(this.debug){
+                        	console.log("scenes debug: clicked on button to edit scene: ", event.target.closest(".extension-scenes-item-setter").dataset);
+						}
                         document.getElementById('extension-scenes-content-container').classList.add('extension-scenes-showing-second-page');
                         document.getElementById('extension-scenes-view').style.zIndex = '3';
-                        this.edit_scene(event.target.closest(".extension-scenes-item-setter").dataset.name);
+                        this.edit_scene(event.target.closest(".extension-scenes-item-setter").dataset.scene_id);
                         // event.target.closest(".extension-scenes-item")
                     });
                     
                     
                     // ADD PLAY BUTTON
                     const play_button = clone.querySelectorAll('.extension-scenes-item-play-button')[0];
-                    play_button.setAttribute('data-name', item_name);
-                    
+					
+					play_button.setAttribute('data-name', item_name);
+                    play_button.setAttribute('data-scene_id', reverse_lookup[ item_name ]);
+					
 					play_button.addEventListener('click', (event) => {
                         //console.log("play button click. event: ", event);
                         
 						// Inform backend
 						window.API.postJson(
 							`/extensions/${this.id}/api/ajax`,
-							{'action':'play','scene_name': event.target.dataset.name}
+							{'action':'play','scene_id': event.target.dataset.scene_id}
 						).then((body) => { 
 							if(this.debug){
-                                console.log("play scene response: ", body);
+                                console.log("scenes debug: play scene response: ", body);
                             }
+							if(typeof body.timers != 'undefined'){
+								this.timers = body.timers;
+								this.generate_timers_list();
+							}
                             if(body.state == true){
-                                //console.log('the scene was started');
-                                
-                                event.target.closest(".extension-scenes-item").classList.add('extension-scenes-last-selected'); // find the parent item
-                                // Remove the item form the list, or regenerate the entire list instead
-                                // parent4.removeChild(parent3);
+                                if(this.debug){
+									console.log('scenes debug: the scene was started');
+								}
+                                const item_el = play_button.closest(".extension-scenes-item");
+								if(item_el){
+									item_el.classList.add('extension-scenes-last-selected');
+								}
+                                else{
+                                	if(this.debug){
+										console.error("scenes debug:could not find closest parent item");
+									}
+                                }
                             }
 
-						}).catch((e) => {
-							console.log("scenes: error in play handler: ", e);
+						}).catch((err) => {
+							console.error("scenes: caught api error in play handler: ", err);
 						});
                     
                     });
@@ -331,18 +435,21 @@
 					// ADD DELETE BUTTON
 					const delete_button = clone.querySelectorAll('.extension-scenes-item-delete-button')[0];
                     delete_button.setAttribute('data-name', item_name);
+					delete_button.setAttribute('data-scene_id', reverse_lookup[ item_name ]);
                     
 					delete_button.addEventListener('click', (event) => {
                         //console.log("delete button click. event: ", event);
                         if(confirm("Are you sure you want to delete this scene?")){
     						
+							//console.log("event.target.dataset.scene_id: ", event.target.dataset.scene_id);
+							
     						// Inform backend
     						window.API.postJson(
     							`/extensions/${this.id}/api/ajax`,
-    							{'action':'delete','scene_name': event.target.dataset.name}
+    							{'action':'delete','scene_id': event.target.dataset.scene_id}
     						).then((body) => { 
     							if(this.debug){
-                                    console.log("delete item response: ", body);
+                                    console.log("scenes debug: delete item response: ", body);
                                 }
                                 if(body.state == true){
                                     //console.log('the item was deleted on the backend');
@@ -352,8 +459,8 @@
                                     // parent4.removeChild(parent3);
                                 }
 
-    						}).catch((e) => {
-    							console.log("scenes: error in delete items handler: ", e);
+    						}).catch((err) => {
+    							console.error("scenes: caught error calling delete scene API: ", err);
     						});
                         }
 				  	});
@@ -368,32 +475,178 @@
             
             
 			}
-			catch (e) {
-				console.log("Error in regenerate_items: ", e);
+			catch (err) {
+				console.log("Scenes: general error in regenerate_items: ", err);
 			}
 		}
+	
+	
+	
+		//
+		//  GENERATE ACTIVE TIMERS LIST
+		//
+	
+		generate_timers_list(){
+			/*
+			if(this.debug){
+				if(Object.keys(this.timers).length){
+					console.log("scenes debug: in generate_timers_list. this.timers: ", this.timers);
+				}
+			}
+			*/
+			const timers_container_el = this.view.querySelector('#extension-scenes-timers-list');
+			if(timers_container_el == null){
+				console.error("scenes: missing timers_container_el");
+				return
+			}
+			
+			timers_container_el.innerHTML = '';
+			
+			for (const [scene_id, details] of Object.entries(this.timers)) {
+				
+				let timer_item_el = document.createElement('div');
+				timer_item_el.classList.add('extension-scenes-timers-list-item');
+				
+				if(typeof details['name'] == 'string' && details['name'].length == 0){
+					console.error("scenes: timer item had empty name.  scene_id,details: ", scene_id, details);
+					continue
+				}
+				
+				// Add the timer's name to the item
+				let timer_info_container_el = document.createElement('div');
+				timer_info_container_el.classList.add('extension-scenes-timers-list-item-info');
+				
+				let timer_name_el = document.createElement('span');
+				timer_name_el.classList.add('extension-scenes-timers-list-item-info-name');
+				timer_name_el.textContent = this.scenes[ scene_id ]['name']; //details['name'];
+				timer_name_el.addEventListener('click', () => {
+					this.edit_scene(details['scene_id']);
+				});
+				timer_info_container_el.appendChild(timer_name_el);
+				
+				//console.log("parent_scene_id: ", details['parent_scene_id'], this.scenes[ details['parent_scene_id'] ]['name']);
+				//console.log("scene_id: ", scene_id, this.scenes[ scene_id ]['name']);
+				
+				if(typeof this.scenes[ details['parent_scene_id'] ] != 'undefined' && typeof this.scenes[ details['parent_scene_id'] ]['name'] == 'string' && this.scenes[ details['parent_scene_id'] ]['name'].length){
+					let timer_parent_name_el = document.createElement('span');
+					timer_parent_name_el.classList.add('extension-scenes-timers-list-item-info-parent-name');
+					timer_parent_name_el.textContent = "Created by: " + this.scenes[ details['parent_scene_id'] ]['name'];
+					timer_parent_name_el.addEventListener('click', () => {
+						this.edit_scene(details['parent_scene_id']);
+					});
+					timer_info_container_el.appendChild(timer_parent_name_el);
+				}
+				
+				timer_item_el.appendChild(timer_info_container_el);
+				
+				
+				// Add time-to-go details to timer item
+				if(typeof details['start_time'] == 'number'){
+					
+					let seconds_to_go = details['start_time'] - (Date.now() / 1000);
+					if(this.debug){
+						//console.log("scenes debug: timer: seconds_to_go: ", seconds_to_go);
+					}
+					
+					if(seconds_to_go < 0){
+						if(this.debug){
+							console.warn("scenes debug: seconds_to_go was negative - this timer is expired: ", seconds_to_go);
+						}
+						continue
+					}
+					
+					let timer_time_to_go_el = document.createElement('span');
+					timer_time_to_go_el.classList.add('extension-scenes-timers-list-item-time-to-go');
+					if(seconds_to_go < 60 * 2){
+						timer_time_to_go_el.textContent = "Starting in " + Math.floor(seconds_to_go) + " seconds";
+					}
+					else if(seconds_to_go < (3600 * 2)){
+						timer_time_to_go_el.textContent = "Starting in " + Math.floor(seconds_to_go / 60) + " minutes";
+					}
+					else if(seconds_to_go < (38400 * 2)){
+						timer_time_to_go_el.textContent = "Starting in " + Math.floor(seconds_to_go / 3600) + " hours";
+					}
+					else{
+						timer_time_to_go_el.textContent = "Starting in " + Math.floor(seconds_to_go / 38400) + " days";
+					}
+					
+					timer_item_el.appendChild(timer_time_to_go_el);
+				}
+				
+				
+				// Add button to delete active timer
+				let timer_delete_button_container_el = document.createElement('div');
+				timer_delete_button_container_el.classList.add('extension-scenes-timers-list-delete-button-container');
+				
+				let timer_delete_button_el = document.createElement('span');
+				timer_delete_button_el.classList.add('extension-scenes-item-delete-button');
+				timer_delete_button_el.addEventListener('click', () => {
+					delete this.timers[scene_id];
+					timer_item_el.style.display = 'none';
+					
+					// Inform backend
+					window.API.postJson(
+						`/extensions/${this.id}/api/ajax`,
+						{'action':'delete_timer','scene_id': scene_id}
+					).then((body) => { 
+						if(this.debug){
+                            console.log("scenes debug: delete timer response: ", body);
+                        }
+                        if(body.state == true){
+							this.generate_timers_list();
+                        }
+					}).catch((err) => {
+						console.error("scenes: caught error in delete_timer API request: ", err);
+					});
+					
+				});
+				
+				
+				timer_delete_button_container_el.appendChild(timer_delete_button_el);
+				timer_item_el.appendChild(timer_delete_button_container_el);
+				
+				// add new timer item to list
+				timers_container_el.appendChild(timer_item_el);
+				
+			}
+			
+		}
+	
+	
+	
+	
+	
 	
     
     
     
     
-        edit_scene(scene_name){
-            
+        edit_scene(scene_id){
+			if(this.debug){
+				console.log("scenes debug: in edit_scene. scene_id: ", scene_id);
+			}
+			
             document.getElementById('extension-scenes-view').scrollTop = 0;
             
+			const scene_id_input_el = this.view.querySelector('#extension-scenes-edit-id');
+			if(scene_id_input_el == null){
+				console.error("scenes: edit_scene: could not find scene_id input element");
+				return
+			}
+			if(typeof scene_id == 'string'){
+				scene_id_input_el.value = scene_id;
+			}
+			
+			const scene_name_input_el = this.view.querySelector('#extension-scenes-edit-name');
+			
             var scene_settings = {};
-            if(typeof scene_name == 'undefined' || scene_name == null || scene_name == ""){
-                //console.log("creating new scene");
-                document.getElementById('extension-scenes-edit-name').value = "";
-            }
-            else{
-                //console.log("editing existing scene: " + scene_name);
-                document.getElementById('extension-scenes-edit-name').value = scene_name;
-            }
-            
-            if(typeof this.scenes[scene_name] == 'undefined'){
-                //console.log('non-existant scene');
-                document.getElementById('extension-scenes-edit-name').value = "";
+			
+			scene_name_input_el.value = '';
+			
+            if(typeof this.scenes[scene_id] != 'undefined'){
+				if(typeof this.scenes[scene_id]['name'] == 'string'){
+					document.getElementById('extension-scenes-edit-name').value = this.scenes[scene_id]['name'];
+				}
             }
             
             document.getElementById('extension-scenes-edit-thing-settings').innerHTML = "";
@@ -403,7 +656,7 @@
 			
     			this.all_things = things;
     			if(this.debug){
-                    console.log("scenes: debug: all things: ", things);
+                    console.log("scenes debug: all things: ", things);
                 }
 			    
     			// pre-populate the hidden 'new' item with all the thing names
@@ -422,9 +675,6 @@
         					thing_title = things[key]['label'];
         				}
 				
-        				
-        				
-			
         				var thing_id = things[key]['href'].substr(things[key]['href'].lastIndexOf('/') + 1);
                         //console.log("thing_id: ", thing_id);
                         
@@ -439,10 +689,6 @@
                         }
                         
                         //console.log("thing_title and ID: ", thing_title, thing_id);
-                        
-                        
-        				//thing_ids.push( things[key]['href'].substr(things[key]['href'].lastIndexOf('/') + 1) );
-                        
 
                         var thing_container = document.createElement('div');
                         thing_container.classList.add('extension-scenes-edit-item')
@@ -455,28 +701,19 @@
                         thing_checkbox.classList.add('extension-scenes-edit-item-thing-checkbox');
                     
                         // Set the checkbox of the thing to checked if it was already in the scene
-                        if (typeof this.scenes[scene_name] != 'undefined'){
-                            if (typeof this.scenes[scene_name][thing_id] != 'undefined'){
+                        if (typeof this.scenes[scene_id] != 'undefined' && typeof this.scenes[scene_id]['things'] != 'undefined'){
+                            if (typeof this.scenes[scene_id]['things'][thing_id] != 'undefined'){
                                 //console.log("checking thing checkbox");
                                 thing_checkbox.checked = true;
                             }
                         }
                     
-                        /*
-                        if(typeof body.persistent_data.allowed_things != 'undefined'){
-                            if( body.persistent_data.allowed_things.indexOf(item.name) > -1){
-                                checkbox.checked = true;
-                            }
-                        }
-                        */
                         var thing_label = document.createElement('label');
                         thing_label.htmlFor = 'extension-scenes-' + thing_id;
                         //label.appendChild(checkbox);
                         thing_label.appendChild(document.createTextNode(thing_title));
                 
                         
-                    
-                    
                         // ADD PROPERTIES CONTAINER TO THE THING CONTAINER
                     
                         var properties_container = document.createElement('div');
@@ -519,9 +756,9 @@
                                 property_checkbox.classList.add('extension-scenes-edit-item-property-checkbox');
                                 
                                 // Set the checkbox of the property to checked if it was already enabled in the scene
-                                if (typeof this.scenes[scene_name] != 'undefined'){
-                                    if (typeof this.scenes[scene_name][thing_id] != 'undefined'){
-                                        if (typeof this.scenes[scene_name][thing_id][property_id] != 'undefined'){
+                                if (typeof this.scenes[scene_id] != 'undefined' && typeof this.scenes[scene_id]['things'] != 'undefined'){
+                                    if (typeof this.scenes[scene_id]['things'][thing_id] != 'undefined'){
+                                        if (typeof this.scenes[scene_id]['things'][thing_id][property_id] != 'undefined'){
                                             //console.log("checking property checkbox");
                                             property_checkbox.checked = true;
                                         }
@@ -532,8 +769,6 @@
                                 var property_label_el = document.createElement('label');
                                 property_label_el.htmlFor = 'extension-scenes-' + thing_id + '---' + property_id;
                                 property_label_el.appendChild(document.createTextNode(property_title));
-                                
-                                
                                 
                                 
                                 // Create input element for the property value
@@ -605,8 +840,6 @@
                                             input_el.appendChild(option);
                                         }
                                         
-                                        
-                                        
                                     }
                                 }
                                 
@@ -620,12 +853,12 @@
                                 
                                 found_write_property = true;
                                 
-                                if (typeof this.scenes[scene_name] != 'undefined'){
-                                    if (typeof this.scenes[scene_name][thing_id] != 'undefined'){
-                                        if (typeof this.scenes[scene_name][thing_id][property_id] != 'undefined'){
-                                            if (this.scenes[scene_name][thing_id][property_id] != 'undefined'){
+                                if (typeof this.scenes[scene_id] != 'undefined'){
+                                    if (typeof this.scenes[scene_id]['things'][thing_id] != 'undefined'){
+                                        if (typeof this.scenes[scene_id]['things'][thing_id][property_id] != 'undefined'){
+                                            if (this.scenes[scene_id]['things'][thing_id][property_id] != 'undefined'){
                                                 //console.log("adding input value: ", this.scenes[scene_name][thing_id][property_id]);
-                                                input_el.value = this.scenes[scene_name][thing_id][property_id];
+                                                input_el.value = this.scenes[scene_id]['things'][thing_id][property_id];
                                             }
                                         }
                                     }
@@ -641,8 +874,6 @@
                                     //console.log("checkbox_sibling: ", checkbox_sibling);
                                     checkbox_sibling.checked = true;
                                 });
-                                
-                                
                                 
                                 // Add property element to the property container
                                 property_container.appendChild(property_checkbox);
@@ -671,31 +902,152 @@
                             }
                         }
                         
-                    
-                        
-
                     }
     			}
     	    });
+			
+			
+			
+			//
+			//  GENERATE TIMER UI
+			//
+			
+			let timer_settings_container_el = this.view.querySelector('#extension-scenes-edit-thing-timer-settings');
+			if(timer_settings_container_el == null){
+				console.error("scenes: timer_settings_container_el is missing");
+				return
+			}
+			
+			timer_settings_container_el.innerHTML = '';
+			
+			
+			// add " After " span
+			let timer_settings_text1_el = document.createElement('span');
+			timer_settings_text1_el.textContent = 'After ';
+			timer_settings_container_el.appendChild(timer_settings_text1_el);
+			
+			// Geneate time number input
+			let timer_settings_counter_input_el = document.createElement('input');
+			timer_settings_counter_input_el.setAttribute('type','number');
+			timer_settings_counter_input_el.setAttribute('id','extension-scenes-edit-thing-timer-count');
+			
+			// Generate time units select dropdown
+			let timer_settings_time_unit_select_el = document.createElement('select');
+			timer_settings_time_unit_select_el.setAttribute('id','extension-scenes-edit-thing-timer-unit');
+			
+			const time_units = {'seconds':1,'minutes':60,'hours':3600,'days':38400};
+			
+			for (const [time_unit_name, time_unit_multiplier] of Object.entries(time_units)) {
+				let select_option_el = document.createElement('option');
+				select_option_el.textContent = time_unit_name;
+				select_option_el.setAttribute('value',time_unit_multiplier);
+				timer_settings_time_unit_select_el.appendChild(select_option_el);
+			}
+			
+			// Restore time unit value
+            if(typeof this.scenes[scene_id] != 'undefined' && typeof this.scenes[scene_id]['timer'] != 'undefined' && typeof this.scenes[scene_id]['timer']['time_unit'] == 'number' && Object.values(time_units).indexOf(this.scenes[scene_id]['timer']['time_unit']) != -1){
+				timer_settings_time_unit_select_el.value = this.scenes[scene_id]['timer']['time_unit'];
+				if(typeof this.scenes[scene_id]['timer']['seconds'] == 'number'){
+					timer_settings_counter_input_el.value = Math.round(this.scenes[scene_id]['timer']['seconds'] / this.scenes[scene_id]['timer']['time_unit']);
+				}
+            }
+			else{
+				if(typeof this.scenes[scene_id] != 'undefined' && typeof this.scenes[scene_id]['timer'] != 'undefined' && typeof this.scenes[scene_id]['timer']['seconds'] == 'number'){
+					timer_settings_counter_input_el.value = this.scenes[scene_id]['timer']['seconds'];
+				}
+				else{
+					timer_settings_time_unit_select_el.value = 1;
+				}
+			}
+			
+			// Wrap the input and select in a div to make sure they are always shown next to each other
+			const time_inputs_wrapper_el = document.createElement('div');
+			time_inputs_wrapper_el.classList.add('extension-scenes-inline-block');
+			
+			time_inputs_wrapper_el.appendChild(timer_settings_counter_input_el);
+			time_inputs_wrapper_el.appendChild(timer_settings_time_unit_select_el);
+			timer_settings_container_el.appendChild(time_inputs_wrapper_el);
+			
+			
+			// add " start " span
+			let timer_settings_text2_el = document.createElement('span');
+			timer_settings_text2_el.textContent = ' start ';
+			timer_settings_container_el.appendChild(timer_settings_text2_el);
+			
+			
+			// generate scene names select dropdown
+			let timer_settings_scene_select_el = document.createElement('select');
+			timer_settings_scene_select_el.setAttribute('id','extension-scenes-edit-thing-timer-next-scene');
+			let scene_names = ['-'];
+			let reverse_lookup = {};
+			
+			for (const [select_scene_id, details] of Object.entries(this.scenes)) {
+				if(this.debug){
+					console.log(`Scenes debug: scene_id and details: ${select_scene_id}: ${details}`);
+				}
+				if(typeof details['name'] == 'string' && details['name'] != '-'){
+					scene_names.push(details['name']);
+					reverse_lookup[details['name']] = select_scene_id;
+				}
+			}
+			
+			if(this.debug){
+				console.log("scenes debug: timer: reverse_lookup: ", reverse_lookup);
+			}
+			
+			for(let sn = 0; sn < scene_names.length; sn++){
+				let select_option_el = document.createElement('option');
+				select_option_el.textContent = scene_names[sn];
+				if(scene_names[sn] == '-'){
+					select_option_el.setAttribute('value', '');
+				}else{
+					select_option_el.setAttribute('value', reverse_lookup[ scene_names[sn] ]);
+				}
+				
+				timer_settings_scene_select_el.appendChild(select_option_el);
+			}
+			
+			// Restore scene select value
+            if(typeof this.scenes[scene_id] != 'undefined' && typeof this.scenes[scene_id]['timer'] != 'undefined' && typeof this.scenes[scene_id]['timer']['next_scene_id'] == 'string' && this.scenes[scene_id]['timer']['next_scene_id'] != '' && Object.keys(this.scenes).indexOf(this.scenes[scene_id]['timer']['next_scene_id']) != -1){
+				timer_settings_scene_select_el.value = this.scenes[scene_id]['timer']['next_scene_id'];
+            }
+			else{
+				timer_settings_scene_select_el.value  = '';
+			}
+			
+			timer_settings_container_el.appendChild(timer_settings_scene_select_el);
+			
+			
+			// add " scene" span
+			/*
+			let timer_settings_text3_el = document.createElement('span');
+			timer_settings_text3_el.textContent = ' scene';
+			timer_settings_container_el.appendChild(timer_settings_text3_el);
+			*/
             
         } // end of edit_scene
     
-    
-    
+	
+	
         save_scene(test){
             
             if(typeof test == 'undefined'){
                 test = false;
             }
             
-            const scene_name = document.getElementById('extension-scenes-edit-name').value;
+			const scene_id_input_el = document.getElementById('extension-scenes-edit-id');
+			let scene_id = scene_id_input_el.value;
+            if(scene_id == ''){
+            	scene_id = crypto.randomUUID();
+            }
+			
+			const scene_name = document.getElementById('extension-scenes-edit-name').value;
             if(scene_name == ""){
                 alert("Please provide a name");
                 return;
             }
             
             var scene_settings = {}
-            //document.getElementById('extension-scenes-edit-thing-settings').
             
             document.querySelectorAll('#extension-scenes-edit-thing-settings .extension-scenes-edit-item').forEach(function(thing_item) {
                 //console.log('thing_item: ', thing_item);
@@ -732,21 +1084,14 @@
                                 
                                 scene_settings[thing_id][property_id] = prop_value;
                                 
-                                //const property_value_elements = property_item.querySelectorAll('.extension-scenes-edit-item-property-value').forEach(function(property_value_item) {
-                                //    console.log('- value: ', property_value_item.value);
-                                //});
-                                
                             }
                             
                         }
                     
                     }
-                    else{
-                        //console.log("unchecked");
-                    }
                 }
                 else{
-                    console.log("error, could not find thing checkbox inside edit item"); 
+                    console.error("scenes: error, could not find thing checkbox inside edit item"); 
                 }
                 
             });
@@ -757,7 +1102,7 @@
             }
             else{
                 if(this.debug){
-                    console.log("\n\nscene_settings: ", scene_settings);
+                    console.log("\n\nscenes debug: scene things settings: ", scene_settings);
                 }
             }
             
@@ -766,21 +1111,48 @@
             if(test){
                 action = 'test_scene';
             }
+			
+			let complete_scene_settings = {'name':scene_name, 'things':scene_settings}
+			
+			const timer_next_scene_el = this.view.querySelector('#extension-scenes-edit-thing-timer-next-scene');
+			if(timer_next_scene_el && typeof timer_next_scene_el.value == 'string' && timer_next_scene_el.value != ''){
+				const timer_count_el = this.view.querySelector('#extension-scenes-edit-thing-timer-count');
+				const time_unit_el = this.view.querySelector('#extension-scenes-edit-thing-timer-unit');
+			
+				if(timer_count_el && time_unit_el){
+					let timer_count = parseInt(timer_count_el.value);
+					let timer_multiplier = parseInt(time_unit_el.value);
+					if(timer_count > 0){
+						complete_scene_settings['timer'] = {'next_scene_id':timer_next_scene_el.value, 'seconds':(timer_count * timer_multiplier), 'time_unit':timer_multiplier}
+					}
+					
+				}
+				else{
+					console.error("missing timer input elements.  timer_count_el,time_unit_el: ", timer_count_el,time_unit_el);
+				}
+				
+			}
+			
+            if(this.debug){
+                console.log("\n\nscenes debug: complete_scene_settings: ", complete_scene_settings);
+            }
+			
             
             
             // If we end up here, then a name and number were present in the input fields. We can now ask the backend to save the new item.
 			window.API.postJson(
 				`/extensions/${this.id}/api/ajax`,
-				{'action':action, 'scene_name':scene_name, 'scene_settings':scene_settings}
+				{'action':action, 'scene_id':scene_id, 'scene_settings':complete_scene_settings}
                 
 			).then((body) => {
                 if(this.debug){
-                    console.log("save scene response: ", body);
+                    console.log("scenes debug: save scene response: ", body);
                 }
                 if(body.state == true){
                     //console.log("saving scene went ok");
                     if(action == 'save_scene'){
                         document.getElementById('extension-scenes-content-container').classList.remove('extension-scenes-showing-second-page');
+						scene_id_input_el.value = '';
                         document.getElementById('extension-scenes-view').style.zIndex = 'auto';
                         this.scenes = body['scenes'];
                         this.regenerate_items(body['scenes']);
@@ -788,18 +1160,15 @@
                 }
                 else{
                     //console.log("saving new item failed!");
-                    alert("sorry, saving the scene failed.");
+                    alert("Sorry, saving the scene failed.");
                 }
                 
 			}).catch((e) => {
-				console.log("scenes: connnection error after save item button press: ", e);
+				console.error("scenes: connnection error after save item button press: ", e);
                 alert("failed to save scene: connection error");
 			});
             
-            
-            
         }
-    
     
     }
 

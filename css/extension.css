@@ -21,9 +21,20 @@ extension-scenes-
     max-width: 100%;
 }
 
+#extension-scenes-view p{
+	line-height: 160%;
+}
 
 #extension-scenes-view img{
     max-width:100%;
+}
+
+.extension-scenes-small-text-button{
+	display:inline-block;
+	padding:0 1rem;
+	border-radius:1rem;
+	background-color:#5d9bc7;
+	cursor:pointer;
 }
 
 #extension-scenes-content-container {
@@ -57,10 +68,9 @@ extension-scenes-
     background-image: url('../images/menu-icon.svg');
 	width:8rem;
 	margin:0 auto;
+	margin-bottom:4rem;
 }
 
-
-/* Main menu item */
 #main-menu #extension-scenes-menu-item {
   	background-image: url('../images/menu-icon.svg');
 }
@@ -68,7 +78,6 @@ extension-scenes-
 
 
 
-/* In this example we hide the second page based on a CSS class that is added or removed from the content container div */
 #extension-scenes-second-page{
     display:none;
 }
@@ -80,27 +89,21 @@ extension-scenes-
 }
 
 
-
-
-
-.extension-scenes-centered-page{ /*  Creates a centered area inside each page/tab */
+.extension-scenes-centered-page{
     max-width:80rem;
     margin:0 auto;
 }
 
-
-.extension-scenes-area{ /* A small area inside a page with a slightly darker background */
+.extension-scenes-area{ 
     background-color:rgba(0,0,0,.1);
     border-radius:.5rem;
     padding:2rem;
     margin:4rem 0;
 }
 
-.extension-scenes-hidden{ /* It's best to add this class to something you want to hide instead of doing .style.display = 'none' though javascript */
-    display:none;
+.extension-scenes-hidden{ 
+    display:none!important;
 }
-
-
 
 #extension-scenes-view .text-button{
     font-size:1.6rem;
@@ -109,7 +112,6 @@ extension-scenes-
 
 
 /*  MAIN PAGE  */
-
 
 #extension-scenes-show-second-page-button{
     font-size: 1.6rem;
@@ -146,9 +148,6 @@ extension-scenes-
     padding:2rem;
     box-sizing:border-box;
 }
-
-
-
 
 .extension-scenes-item-main{
     display:flex;
@@ -189,9 +188,9 @@ extension-scenes-
     border-left:1px solid rgba(255,255,255,.1);
 }
 
-
-
-
+.extension-scenes-timers-list-delete-button-container{
+	padding:1rem;
+}
 
 .extension-scenes-item-play-button,
 .extension-scenes-item-delete-button{
@@ -235,12 +234,88 @@ extension-scenes-
     border: 2px solid transparent;
 }
 
-
 .extension-scenes-item-play-button:hover,
 .extension-scenes-item-delete-button:hover{
 	opacity:1;
 	box-shadow: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
 }
+
+
+
+
+/*  TIMERS  */
+
+#extension-scenes-timers-list{
+	margin-bottom:4rem;
+}
+
+#extension-scenes-timers-list:not(:empty)::before{
+	content: 'Timers';
+	font-size:2rem;
+	display:block;
+	margin-top:4rem;
+	margin-bottom:1rem;
+}
+
+.extension-scenes-timers-list-item{
+	display:flex;
+	flex-wrap:wrap;
+	justify-content:space-between;
+	align-items:center;
+	padding:1rem;
+	border-radius:1rem;
+	background-color:rgba(255,255,255,.1);
+	
+}
+
+.extension-scenes-timers-list-item-info{
+	display:flex;
+	flex-direction:column;
+	padding:1rem;
+}
+.extension-scenes-timers-list-item-info-name{
+	font-size:2.4rem;
+}
+
+.extension-scenes-timers-list-item-info-parent-name{
+	opacity:.7;
+	font-size:90%;
+}
+
+
+/*  TIMER SETTINGS ON SCENE EDIT PAGE  */
+
+#extension-scenes-edit-thing-timer-settings{
+	display:flex;
+	flex-wrap:wrap;
+	align-items:center;
+}
+#extension-scenes-edit-thing-timer-settings > *{
+	display:inline-block;
+	margin-right:1rem;
+}
+
+#extension-scenes-edit-thing-timer-count{
+	width:8rem;
+}
+
+#extension-scenes-edit-thing-timer-settings input,
+#extension-scenes-edit-thing-timer-settings select{
+	padding:.5rem 1rem;
+	font-size:1.6rem;
+	border-radius:.5rem;
+}
+
+#extension-scenes-edit-thing-timer-settings input{
+	text-align:center;
+	height:auto;
+	font-size: 1.8rem;
+}
+
+#extension-scenes-edit-thing-timers-tutorial ul{
+	line-height:160%;
+}
+
 
 
 
@@ -287,6 +362,14 @@ extension-scenes-
     max-width: calc(100% - 2rem);
 }
 
+#extension-scenes-edit-id{
+	width:100%;
+	opacity:.5;
+	box-sizing: border-box;
+}
+body:not(.developer) #extension-scenes-edit-id{
+	display:none;
+}
 
 #extension-scenes-edit-thing-settings{
     margin-top:4rem;

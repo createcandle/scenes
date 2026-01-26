@@ -1,28 +1,14 @@
-<!-- 
-The controller creates a view elemenf for the addon. This addon's Javascript then loads this chunk of HTML into that view.
-
-It's recommended to not manipulate the view container. That's why this HTML starts with making its own content container.
-
-- extension-scenes-content-container is the main container. It's use is mainly to allow everything inside to scroll (through overflow: auto in the CSS)
-- - extension-scenes-content holds the content for the addon. It starts with the title, and is then followed by some tabs.
-
-The page has a imaginary border of 10 rem, which is where things like the menu button reside.(Those buttons are themselves 2rem from the side, and 8 rem wide and tall).
-
-Addons may add buttons to the top-right and bottom-right corner. Buttons to add or refresh things are prefered in the bottom-right. Settings or tutorial buttons are prefered in the rop right.
-
--->
-
 <div id="extension-scenes-content-container">
   
     <div id="extension-scenes-content">
-        <h3 id="extension-scenes-title">Scenes</h3> <!-- The icon is loaded into this title as a background, through CSS -->
+        <h3 id="extension-scenes-title">Scenes</h3>
 
-        <div id="extension-scenes-tabs-container"> <!-- your addon might itself have multiple tabs/pages. In this example toggling between the two tabs is based on a class class on the content container div -->
+        <div id="extension-scenes-tabs-container">
             
             
             <div id="extension-scenes-main-page">
                 
-                <div class="extension-scenes-centered-page"> <!-- This centered page div sets a maximum with for the content and centers it. -->
+                <div class="extension-scenes-centered-page">
                     
                     <div id="extension-scenes-loading">
                         <div class="extension-scenes-spinner">
@@ -31,11 +17,10 @@ Addons may add buttons to the top-right and bottom-right corner. Buttons to add 
                     </div>
                     
                     
-                    
-                    
                     <div id="extension-scenes-main-items-list"></div>
+					
+					<div id="extension-scenes-timers-list"></div>
                 
-                    <!-- By having this button inside of this tab, it will be automatically hidden when it's pressed-->
                     <button id="extension-scenes-show-second-page-button" class="icon-button"></button>
         
                 </div>
@@ -46,46 +31,63 @@ Addons may add buttons to the top-right and bottom-right corner. Buttons to add 
             
             <div id="extension-scenes-second-page">
                 
-                <div class="extension-scenes-centered-page"> <!-- This centered page div sets a maximum with for the content and centers it. -->
+                <div class="extension-scenes-centered-page">
                 
         		<h2>Edit scene</h2>
                 
-                
                 <div class="extension-scenes-area">
                     <div>
-                        <input id="extension-scenes-edit-name" placeholder="Scene name"/>
+						<input id="extension-scenes-edit-id" type="text" placeholder="Scene ID" disabled>
+                        <input id="extension-scenes-edit-name" type="text" placeholder="Scene name">
                     </div>
                     
                     <div id="extension-scenes-edit-thing-settings"></div>
                     
+					<div class="extension-scenes-area">
+						<h3>Timer (optional)</h3>
+						<p>This scene can trigger another scene. <span id="extension-scenes-edit-thing-timers-learn-more-button" class="extension-scenes-small-text-button">Learn more</span></p>
+						<div id="extension-scenes-edit-thing-timers-tutorial" class="extension-scenes-hidden">
+							
+							<p>Timers allow you to switch from one scene to another one automatically after some prefered time delay. For example to turn devices off again that the first scene switched on. But you can do much more!</p>
+							<h4>Create animations and even loops</h4>
+							<p>If the next scene then has a timer that in return triggers the first one, then you have created a basic 'animation' loop. You can create endlessly repeating animations this way, with as many steps as you want.
+								<br>
+								<img src="/extensions/scenes/images/scenes_loop_example.svg">
+							</p>
+							<p>
+								Some examples of what you could do with this:
+								<ul>
+									<li>Create an automation that automatically deactivates itself after some time</li>
+									<li>Create festive decorative light switching patterns that loop endlessly</li>
+									<li>Once per day set all things back to a default state</li>
+									<li>Create an escape room experience in your own house</li>
+								</ul>
+							</p>
+						</div>
+						
+						<div id="extension-scenes-edit-thing-timer-settings" class="extension-scenes-area"></div>
+					</div>
+					
                     <div id="extension-scenes-edit-buttons">
                         <button id="extension-scenes-edit-test-button" class="text-button">Test</button> <button id="extension-scenes-edit-save-button" class="text-button">Save</button>
                     </div>
                 </div>
                 
-        
-                <!-- 
-                By having this button inside of this tab, it will be automatically hidden when it's pressed.
-                Also, note there is a small container div around the button. This is done to make the area that can be hit sligtly bigger, so that it works better on touch screens.    
-                -->
                 <div id="extension-scenes-back-button-container">
                     <button id="extension-scenes-back-button" class="back-button icon-button" data-l10n-id="back-button" aria-label="Back"></button>
                 </div>
         
             </div>
             
-		
         </div>
         
         
-        <!-- This is the item that is cloned to create a list. The Zigbee2MQTT addon does this, for example. -->
 		<div id="extension-scenes-original-item" class="extension-scenes-item">
 
             <div class="extension-scenes-item-main">
                 
                 <div class="extension-scenes-item-left">
                     <div class="extension-scenes-item-icon">
-                        <!-- You could add an icon depending on the type of item -->
                         <div class="extension-scenes-item-play-button">&nbsp;</div>
                     </div>
                 </div>
@@ -105,7 +107,6 @@ Addons may add buttons to the top-right and bottom-right corner. Buttons to add 
 
 		</div>
         
-        <!-- Give your addon's content to extra margin at the bottom - prefereable 50vh (50% height of the viewport). This is because touch screen users will need space at the bottom to show the virtual keyboard, and be able to scroll your content above it. -->
         <br/>
         <br/>
 
@@ -120,8 +121,3 @@ Addons may add buttons to the top-right and bottom-right corner. Buttons to add 
     </div>
     
 </div>
-
-
-
-
-
