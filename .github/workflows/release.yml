@@ -32,7 +32,6 @@ jobs:
         ]
         pair: [
           'python:3.9',
-          'python:3.13',
         ]
         include:
           - platform: 'linux-arm'
@@ -44,9 +43,6 @@ jobs:
           - pair: 'python:3.9'
             language: 'python'
             version: '3.9'
-          - pair: 'python:3.13'
-            language: 'python'
-            version: '3.13'
 
     runs-on: ${{ matrix.host-os }}
 
