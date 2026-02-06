@@ -612,7 +612,12 @@ body:not(.developer) #extension-scenes-edit-id{
 
 
 @media screen and (min-width: 1025px) {
-	
+	#extension-scenes-start-page-explanation{
+		padding: 2rem 4rem;
+		margin-bottom: 3rem;
+		border-radius: 2rem;
+		background-color: rgba(0, 0, 0, .1);
+	}
 }
 
 
