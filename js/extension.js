@@ -307,8 +307,25 @@
                 
                 // If the items list does not contain actual items, then stop
                 if(scene_names.length == 0){
-                    list_el.innerHTML = '<p style="text-align:center">Click on the (+) button to create a new scene</p>';
-                    return
+                    let explanation_html = '<div id="extension-scenes-start-page-explanation" class="extension-scenes-flex">';
+					explanation_html += '<img src="/extensions/scenes/images/man_reading_on_couch.svg" alt="Man reading a book on a couch">';
+					explanation_html += '<div>';
+					explanation_html += '<p>Scenes allow you to change the values of many things at once. For example, you could create scenes for:</p>';
+					explanation_html += '<ul>';
+					explanation_html += '<li><span>Watching Movies</span>Such a scene could turn down the lights and close the curtains in the livingroom, disable any other distractions, and turn on the TV.</li>';
+					explanation_html += '<li><span>Dinner party</span>Turn on some mood lights, throw in some colour, and turn on a relaxing radio station.</li>';
+					explanation_html += '<li><span>Going to bed</span>The scene could close curtains, turn off music, lock the doors, limit heating to bedrooms, and limit noisy devices such as air filters.</li>';
+					explanation_html += '<li><span>Away from home</span>The scene could turn off all the lights and heating, and turn on security systems.</li>';
+					explanation_html += '</ul>';
+					
+                    explanation_html += '</div>';
+					explanation_html += '</div>';
+					explanation_html += '<p></p><p style="text-align:center">Click on the <img src="/images/add.svg" width="16" height="16" alt="plus icon"> button in the bottom-right corner to create a new scene.</p>';
+					
+					
+					
+					list_el.innerHTML = explanation_html;
+					return
                 }
                 else{
                     list_el.innerHTML = "";

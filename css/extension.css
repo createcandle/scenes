@@ -29,6 +29,11 @@ extension-scenes-
     max-width:100%;
 }
 
+.extension-scenes-flex{
+	display:flex;
+}
+
+
 .extension-scenes-small-text-button{
 	display:inline-block;
 	padding:0 1rem;
@@ -469,6 +474,19 @@ body:not(.developer) #extension-scenes-edit-id{
 }
 
 
+#extension-scenes-start-page-explanation{
+	margin-top:8rem;
+}
+
+#extension-scenes-start-page-explanation li{
+	margin:1rem 0;
+	line-height: 160%;
+}
+
+#extension-scenes-start-page-explanation li span{
+	font-weight:bold;
+	display:block;
+}
 
 /*  loading spinner  */
 
@@ -558,11 +576,17 @@ body:not(.developer) #extension-scenes-edit-id{
     #extension-scenes-main-page{
         padding-right:6rem;
     }
+	
+	#extension-scenes-start-page-explanation img{
+		max-width:40%;
+	}
 }
 
 @media screen and (max-width: 760px) {
 
-    
+    #extension-scenes-start-page-explanation{
+    	flex-wrap:wrap;
+    }
     
     .extension-scenes-edit-item-property{
         max-width:100%;
