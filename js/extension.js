@@ -310,7 +310,7 @@
                     let explanation_html = '<div id="extension-scenes-start-page-explanation" class="extension-scenes-flex">';
 					explanation_html += '<img src="/extensions/scenes/images/man_reading_on_couch.svg" alt="Man reading a book on a couch">';
 					explanation_html += '<div>';
-					explanation_html += '<p>Scenes allow you to change the values of many things at once. For example, you could create scenes for:</p>';
+					explanation_html += '<p>Scenes allow you to change the values of many things at once.</p><p>For example, you could create scenes for:</p>';
 					explanation_html += '<ul>';
 					explanation_html += '<li><span>Watching Movies</span>Such a scene could turn down the lights and close the curtains in the livingroom, disable any other distractions, and turn on the TV.</li>';
 					explanation_html += '<li><span>Dinner party</span>Turn on some mood lights, throw in some colour, and turn on a relaxing radio station.</li>';
