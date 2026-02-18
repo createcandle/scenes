@@ -476,6 +476,14 @@ body:not(.developer) #extension-scenes-edit-id{
 
 #extension-scenes-start-page-explanation{
 	margin-top:8rem;
+	padding: 4rem;
+    background-color: rgba(0, 0, 0, .1);
+    border-radius: 2rem;
+    margin-bottom: 4rem;
+}
+
+#extension-scenes-start-page-explanation > div > p:first-of-type{
+	font-size:2rem;
 }
 
 #extension-scenes-start-page-explanation li{
