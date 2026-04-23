@@ -172,7 +172,7 @@
 					}
 					
 					if( !document.location.href.endsWith("extensions/scenes") ){
-						console.log("user navigated away from scenes addon. Stopping scenes interval");
+						//console.log("user navigated away from scenes addon. Stopping scenes interval");
 						clearInterval(content_el.scenes_interval);
 						document.getElementById('extension-scenes-view').innerHTML = '';
 					}
@@ -185,6 +185,14 @@
 	
 		hide() {
 			//console.log("scenes hide called");
+			try{
+                if(document.getElementById('extension-scenes-menu-item').classList.contains('selected') == false){
+                    this.view.innerHTML = "";
+                }
+			}
+            catch(err){
+                console.error("scenes: caught error in hide: ", err);
+            }
 		}
         
     
